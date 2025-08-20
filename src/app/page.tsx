@@ -16,6 +16,9 @@ import {
   TrendingUp
 } from 'lucide-react'
 import Link from 'next/link'
+import Button from '@/components/ui/Button'
+import Card, { CardContent, CardHeader } from '@/components/ui/Card'
+import LanguageCarousel from '@/components/ui/LanguageCarousel'
 
 export default function HomePage() {
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null)
@@ -142,6 +145,20 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Language Carousel Section */}
+      <section className="py-20 bg-gradient-to-br from-gray-50 to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+          >
+            <LanguageCarousel />
+          </motion.div>
+        </div>
+      </section>
+
       {/* Stats Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -161,6 +178,51 @@ export default function HomePage() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Featured Course Section */}
+      <section className="py-20 bg-gradient-to-r from-red-500 to-red-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center text-white"
+          >
+            <div className="text-6xl mb-6">🇨🇳</div>
+            <h2 className="text-4xl font-bold mb-4">
+              Now Available: Chinese Course!
+            </h2>
+            <p className="text-xl mb-8 text-red-100 max-w-3xl mx-auto">
+              Master Mandarin Chinese with our comprehensive course featuring characters, pinyin,
+              pronunciation guides, and cultural context. Start your journey into the world's most spoken language.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/learn/chinese">
+                <Button
+                  size="lg"
+                  className="bg-white text-red-600 hover:bg-red-50 border-2 border-white"
+                  leftIcon={<Play className="w-5 h-5" />}
+                >
+                  Start Chinese Course
+                </Button>
+              </Link>
+              <Link href="/chinese-demo">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-white text-white hover:bg-white hover:text-red-600"
+                >
+                  Try Demo Lesson
+                </Button>
+              </Link>
+            </div>
+            <div className="mt-6 text-red-100">
+              ✨ Interactive lessons • Character recognition • Pinyin practice • Cultural insights
+            </div>
+          </motion.div>
         </div>
       </section>
 

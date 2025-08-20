@@ -43,6 +43,15 @@ export default function CoursesPage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all')
   const [sortBy, setSortBy] = useState<string>('popular')
 
+  // Get language filter from URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const languageParam = urlParams.get('language')
+    if (languageParam) {
+      setSearchTerm(languageParam)
+    }
+  }, [])
+
   // Fetch courses from backend
   useEffect(() => {
     const fetchCourses = async () => {

@@ -2,21 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
-import { Question, LessonSession } from '@/types'
+import { ArrowLeft, ArrowRight, Volume2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import QuestionCard from '@/components/lesson/QuestionCard'
 import LessonProgress from '@/components/lesson/LessonProgress'
 import LessonComplete from '@/components/lesson/LessonComplete'
 import Button from '@/components/ui/Button'
-import { useRouter } from 'next/navigation'
+import { Question, LessonSession } from '@/types'
 
 // Mock Chinese lesson data
-const mockQuestions: Question[] = [
+const chineseLessons: Question[] = [
   {
-    id: 'q1',
+    id: 'ch1',
     type: 'multiple-choice',
     prompt: 'How do you say "Hello" in Chinese?',
     content: {
+      text: 'Choose the correct Chinese greeting:',
       options: ['你好 (nǐ hǎo)', '再见 (zài jiàn)', '谢谢 (xiè xiè)', '不客气 (bù kè qì)']
     },
     correctAnswer: '你好 (nǐ hǎo)',
@@ -25,7 +26,7 @@ const mockQuestions: Question[] = [
     xpReward: 15,
   },
   {
-    id: 'q2',
+    id: 'ch2',
     type: 'translation',
     prompt: 'Translate to English:',
     content: {
@@ -37,7 +38,7 @@ const mockQuestions: Question[] = [
     xpReward: 15,
   },
   {
-    id: 'q3',
+    id: 'ch3',
     type: 'multiple-choice',
     prompt: 'Which means "Goodbye" in Chinese?',
     content: {
@@ -49,7 +50,7 @@ const mockQuestions: Question[] = [
     xpReward: 15,
   },
   {
-    id: 'q4',
+    id: 'ch4',
     type: 'fill-in-blank',
     prompt: 'Complete the polite response:',
     content: {
@@ -61,7 +62,7 @@ const mockQuestions: Question[] = [
     xpReward: 20,
   },
   {
-    id: 'q5',
+    id: 'ch5',
     type: 'multiple-choice',
     prompt: 'How do you say "Good morning" in Chinese?',
     content: {
@@ -72,9 +73,33 @@ const mockQuestions: Question[] = [
     hints: ['早上 means "morning" in Chinese.'],
     xpReward: 15,
   },
+  {
+    id: 'ch6',
+    type: 'translation',
+    prompt: 'Translate to Chinese:',
+    content: {
+      text: 'One'
+    },
+    correctAnswer: '一',
+    explanation: '一 (yī) means "one" in Chinese. It\'s written with a single horizontal stroke.',
+    hints: ['This number is written with just one stroke.'],
+    xpReward: 15,
+  },
+  {
+    id: 'ch7',
+    type: 'multiple-choice',
+    prompt: 'How do you say "mother" in Chinese?',
+    content: {
+      options: ['妈妈 (mā ma)', '爸爸 (bà ba)', '哥哥 (gē ge)', '姐姐 (jiě jie)']
+    },
+    correctAnswer: '妈妈 (mā ma)',
+    explanation: '妈妈 (mā ma) means "mother" or "mom" in Chinese. It\'s one of the first words children learn.',
+    hints: ['This word sounds similar to "mama" in English.'],
+    xpReward: 15,
+  }
 ]
 
-export default function DemoPage() {
+export default function ChineseDemoPage() {
   const router = useRouter()
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Array<{ questionId: string; answer: string | string[]; isCorrect: boolean; timeSpent: number }>>([])
@@ -83,14 +108,14 @@ export default function DemoPage() {
   const [lives, setLives] = useState(3)
   const [session, setSession] = useState<LessonSession | null>(null)
 
-  const currentQuestion = mockQuestions[currentQuestionIndex]
+  const currentQuestion = chineseLessons[currentQuestionIndex]
   const currentAnswer = answers.find(a => a.questionId === currentQuestion?.id)
 
   useEffect(() => {
     // Initialize session
     const newSession: LessonSession = {
-      id: 'demo-session',
-      lessonId: 'demo-lesson',
+      id: 'chinese-demo-session',
+      lessonId: 'chinese-demo-lesson',
       userId: 'demo-user',
       startedAt: new Date(),
       questions: [],
@@ -151,7 +176,7 @@ export default function DemoPage() {
   }
 
   const handleNext = () => {
-    if (currentQuestionIndex < mockQuestions.length - 1) {
+    if (currentQuestionIndex < chineseLessons.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1)
       setShowResult(false)
     } else {
@@ -179,7 +204,7 @@ export default function DemoPage() {
   }
 
   const handleContinue = () => {
-    router.push('/courses')
+    router.push('/courses?language=zh')
   }
 
   if (isComplete && session) {
@@ -196,14 +221,14 @@ export default function DemoPage() {
     return <div>Loading...</div>
   }
 
-  const totalXP = answers.reduce((sum, a) => sum + (a.isCorrect ? 10 : 0), 0)
+  const totalXP = answers.reduce((sum, a) => sum + (a.isCorrect ? 15 : 0), 0)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-yellow-50">
       {/* Progress Header */}
       <LessonProgress
         currentQuestion={currentQuestionIndex + 1}
-        totalQuestions={mockQuestions.length}
+        totalQuestions={chineseLessons.length}
         lives={lives}
         maxLives={3}
         xpEarned={totalXP}
@@ -212,6 +237,21 @@ export default function DemoPage() {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Chinese Flag and Title */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <div className="text-6xl mb-4">🇨🇳</div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Chinese Lesson Demo
+          </h1>
+          <p className="text-gray-600">
+            Learn Mandarin Chinese with interactive lessons
+          </p>
+        </motion.div>
+
         <AnimatePresence mode="wait">
           <motion.div
             key={currentQuestion.id}
@@ -249,7 +289,7 @@ export default function DemoPage() {
 
             <div className="text-center">
               <div className="text-sm text-gray-600">
-                Question {currentQuestionIndex + 1} of {mockQuestions.length}
+                Question {currentQuestionIndex + 1} of {chineseLessons.length}
               </div>
             </div>
 
@@ -257,7 +297,7 @@ export default function DemoPage() {
               onClick={handleNext}
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
-              {currentQuestionIndex === mockQuestions.length - 1 ? 'Finish' : 'Next'}
+              {currentQuestionIndex === chineseLessons.length - 1 ? 'Finish' : 'Next'}
             </Button>
           </motion.div>
         )}
