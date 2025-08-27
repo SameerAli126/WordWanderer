@@ -1,230 +1,194 @@
-'use client'
+"use client"
 
-import { useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { useRouter } from 'next/navigation'
-import { useUserStore } from '@/store/useUserStore'
-import { BookOpen, Trophy, Flame, Zap, Play, Settings, LogOut } from 'lucide-react'
-import Button from '@/components/ui/Button'
-import Card, { CardContent, CardHeader } from '@/components/ui/Card'
-import XPDisplay from '@/components/gamification/XPDisplay'
-import StreakDisplay from '@/components/gamification/StreakDisplay'
-import Link from 'next/link'
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useUserStore } from "@/store/useUserStore"
+import { Header } from "@/components/header"
+import { Sidebar } from "@/components/sidebar"
+import { LessonPath } from "@/components/lesson-path"
+import { RightPanel } from "@/components/right-panel"
+import { Leaderboard } from "@/components/leaderboard"
+import { StatusSelector } from "@/components/status-selector"
+import { Profile } from "@/components/profile"
+import { Characters } from "@/components/characters"
+import { Quests } from "@/components/quests"
+import { Shop } from "@/components/shop"
+import { Settings } from "@/components/settings"
+import { StreakFreezeModal } from "@/components/streak-freeze-modal"
+import { AchievementToast } from "@/components/achievement-toast"
+import { LanguageSwitcher } from "@/components/language-switcher"
+import { StudyReminder } from "@/components/study-reminder"
+import { ThemeProvider } from "@/contexts/theme-context"
+import { useTheme } from "@/contexts/theme-context"
 
-export default function DashboardPage() {
+type ViewType = "learn" | "leaderboards" | "profile" | "characters" | "quests" | "shop" | "settings"
+
+function DashboardContent() {
   const router = useRouter()
-  const { user, isAuthenticated, checkAuth, logout } = useUserStore()
+  const { user, isAuthenticated, checkAuth } = useUserStore()
+  const [currentView, setCurrentView] = useState<ViewType>("learn")
+  const [showStreakFreeze, setShowStreakFreeze] = useState(false)
+  const [showLanguageSwitcher, setShowLanguageSwitcher] = useState(false)
+  const [showStudyReminder, setShowStudyReminder] = useState(false)
+  const [achievement, setAchievement] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const { theme } = useTheme()
 
+  // Check authentication on mount
   useEffect(() => {
-    if (!isAuthenticated) {
-      checkAuth().then(() => {
-        if (!isAuthenticated) {
-          router.push('/login')
-        }
-      })
+    const initAuth = async () => {
+      await checkAuth()
+      setIsLoading(false)
     }
-  }, [isAuthenticated, checkAuth, router])
+    initAuth()
+  }, [checkAuth])
 
-  const handleLogout = async () => {
-    await logout()
-    router.push('/')
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login')
+    }
+  }, [isAuthenticated, isLoading, router])
+
+  // Simulate achievement unlock
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const timer = setTimeout(() => {
+        if (Math.random() > 0.8) {
+          setAchievement({
+            id: "daily_login",
+            title: "Daily Dedication",
+            description: "Logged in today!",
+            icon: "🎯",
+            xpReward: 25,
+          })
+        }
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [isAuthenticated, user])
+
+  const handleViewChange = (view: ViewType) => {
+    setCurrentView(view)
+    router.push(`/dashboard?view=${view}`)
   }
 
-  if (!user) {
+  const handleNavigate = (view: string) => {
+    if (view === "leaderboards" || view === "quests") {
+      handleViewChange(view as ViewType)
+    }
+  }
+
+  const handleLanguageChange = (language: string) => {
+    console.log(`Switching to language: ${language}`)
+    // Here you would implement language switching logic
+  }
+
+  const getMainClasses = () => {
+    switch (theme) {
+      case "light":
+        return "min-h-screen bg-gray-50 text-gray-900"
+      case "wanderer":
+        return "min-h-screen bg-gradient-to-br from-slate-900 via-green-900/20 to-blue-900/20 text-white"
+      default:
+        return "min-h-screen bg-slate-900 text-white"
+    }
+  }
+
+  const renderMainContent = () => {
+    switch (currentView) {
+      case "learn":
+        return <LessonPath />
+      case "leaderboards":
+        return <Leaderboard />
+      case "profile":
+        return (
+          <Profile
+            onViewAllFriends={() => router.push("/all-friends")}
+            onViewAllAchievements={() => router.push("/all-achievements")}
+          />
+        )
+      case "characters":
+        return <Characters />
+      case "quests":
+        return <Quests onViewAllBadges={() => router.push("/all-badges")} />
+      case "shop":
+        return <Shop />
+      case "settings":
+        return <Settings />
+      default:
+        return <LessonPath />
+    }
+  }
+
+  const renderSidebar = () => {
+    if (currentView === "learn" || currentView === "characters") {
+      return <RightPanel onNavigate={handleNavigate} />
+    }
+    if (currentView === "leaderboards") {
+      return (
+        <aside className="w-full lg:w-80 p-3 sm:p-4">
+          <StatusSelector />
+        </aside>
+      )
+    }
+    return null
+  }
+
+  // Show loading state
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your dashboard...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-green-900/20 to-blue-900/20 flex items-center justify-center">
+        <div className="text-white text-xl">Loading WordWanderer...</div>
       </div>
     )
   }
 
+  // Don't render if not authenticated (will redirect)
+  if (!isAuthenticated || !user) {
+    return null
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-gradient">WordWanderer</span>
-            </Link>
-            
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700">Welcome, {user.displayName}!</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                leftIcon={<LogOut className="w-4 h-4" />}
-              >
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
+    <div className={getMainClasses()}>
+      <Header
+        onProfileClick={() => handleViewChange("profile")}
+        onStreakClick={() => setShowStreakFreeze(true)}
+        onLanguageClick={() => setShowLanguageSwitcher(true)}
+        onNotificationClick={() => setShowStudyReminder(true)}
+      />
+      <div className="flex flex-col lg:flex-row">
+        <Sidebar currentView={currentView} onViewChange={handleViewChange} />
+        <main className="flex-1 p-3 sm:p-6 min-h-0">{renderMainContent()}</main>
+        {renderSidebar()}
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {user.displayName}! 👋
-          </h1>
-          <p className="text-gray-600">
-            Ready to continue your language learning journey?
-          </p>
-        </motion.div>
+      {/* Modals */}
+      <StreakFreezeModal
+        isOpen={showStreakFreeze}
+        onClose={() => setShowStreakFreeze(false)}
+        currentStreak={user.currentStreak || 0}
+        gems={user.gems || 0}
+      />
 
-        {/* Stats Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {/* XP Display */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <XPDisplay
-              currentXP={user.totalXP}
-              showLevel={true}
-              showProgress={true}
-              size="lg"
-            />
-          </motion.div>
+      <LanguageSwitcher
+        isOpen={showLanguageSwitcher}
+        onClose={() => setShowLanguageSwitcher(false)}
+        onLanguageChange={handleLanguageChange}
+      />
 
-          {/* Streak Display */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <StreakDisplay
-              currentStreak={user.currentStreak}
-              longestStreak={user.longestStreak}
-              size="lg"
-            />
-          </motion.div>
+      <StudyReminder isOpen={showStudyReminder} onClose={() => setShowStudyReminder(false)} />
 
-          {/* Quick Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="h-full">
-              <CardContent className="flex flex-col justify-center items-center text-center">
-                <Trophy className="w-12 h-12 text-warning-500 mb-3" />
-                <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {user.achievements.length}
-                </div>
-                <div className="text-gray-600">Achievements</div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mb-8"
-        >
-          <Card>
-            <CardHeader title="Quick Actions" />
-            <CardContent>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Link href="/demo">
-                  <Button
-                    fullWidth
-                    leftIcon={<Play className="w-5 h-5" />}
-                    className="h-16 flex-col space-y-1"
-                  >
-                    <span>Try Demo</span>
-                    <span className="text-xs opacity-75">Interactive Lesson</span>
-                  </Button>
-                </Link>
-                
-                <Link href="/courses">
-                  <Button
-                    variant="outline"
-                    fullWidth
-                    leftIcon={<BookOpen className="w-5 h-5" />}
-                    className="h-16 flex-col space-y-1"
-                  >
-                    <span>Browse Courses</span>
-                    <span className="text-xs opacity-75">Find Languages</span>
-                  </Button>
-                </Link>
-                
-                <Button
-                  variant="outline"
-                  fullWidth
-                  leftIcon={<Trophy className="w-5 h-5" />}
-                  className="h-16 flex-col space-y-1"
-                  onClick={() => alert('Achievements coming soon!')}
-                >
-                  <span>Achievements</span>
-                  <span className="text-xs opacity-75">View Progress</span>
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  fullWidth
-                  leftIcon={<Settings className="w-5 h-5" />}
-                  className="h-16 flex-col space-y-1"
-                  onClick={() => alert('Settings coming soon!')}
-                >
-                  <span>Settings</span>
-                  <span className="text-xs opacity-75">Preferences</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Recent Activity */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <Card>
-            <CardHeader title="Recent Activity" />
-            <CardContent>
-              <div className="text-center py-8">
-                <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Start Your Learning Journey
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  You haven't started any lessons yet. Try our interactive demo or browse available courses.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Link href="/demo">
-                    <Button leftIcon={<Play className="w-4 h-4" />}>
-                      Try Demo Lesson
-                    </Button>
-                  </Link>
-                  <Link href="/courses">
-                    <Button variant="outline" leftIcon={<BookOpen className="w-4 h-4" />}>
-                      Browse Courses
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+      {/* Achievement Toast */}
+      <AchievementToast achievement={achievement} onClose={() => setAchievement(null)} />
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <ThemeProvider>
+      <DashboardContent />
+    </ThemeProvider>
   )
 }
