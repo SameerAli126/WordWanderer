@@ -19,7 +19,6 @@ const nextConfig = {
   },
   // Vercel optimizations
   experimental: {
-    optimizeCss: true,
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
   // Performance optimizations

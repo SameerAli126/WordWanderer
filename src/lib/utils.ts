@@ -62,3 +62,48 @@ export function formatTime(seconds: number): string {
   }
   return `${minutes}m ${remainingSeconds}s`
 }
+
+// Streak message generator
+export function generateStreakMessage(streak: number): string {
+  if (streak === 0) {
+    return "Start your learning streak today!"
+  } else if (streak === 1) {
+    return "Great start! Keep it going!"
+  } else if (streak < 7) {
+    return `${streak} days strong! You're building a habit!`
+  } else if (streak < 30) {
+    return `Amazing ${streak}-day streak! You're on fire! 🔥`
+  } else if (streak < 100) {
+    return `Incredible ${streak}-day streak! You're a learning machine!`
+  } else {
+    return `Legendary ${streak}-day streak! You're unstoppable! 🏆`
+  }
+}
+
+// Number formatting utility
+export function formatNumber(num: number): string {
+  if (num < 1000) {
+    return num.toString()
+  } else if (num < 1000000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K'
+  } else {
+    return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+  }
+}
+
+// XP and level utilities
+export function getLevelFromXP(xp: number): number {
+  return Math.floor(xp / 100) + 1
+}
+
+export function getXPForNextLevel(xp: number): number {
+  const currentLevel = getLevelFromXP(xp)
+  return currentLevel * 100
+}
+
+export function getProgressToNextLevel(xp: number): number {
+  const currentLevelXP = (getLevelFromXP(xp) - 1) * 100
+  const nextLevelXP = getLevelFromXP(xp) * 100
+  const progress = ((xp - currentLevelXP) / (nextLevelXP - currentLevelXP)) * 100
+  return Math.min(progress, 100)
+}

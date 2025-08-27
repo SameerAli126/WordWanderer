@@ -4,7 +4,7 @@ import { Fragment, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import Button from './Button'
+import { Button } from './button'
 
 interface ModalProps {
   isOpen: boolean

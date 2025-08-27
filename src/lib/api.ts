@@ -1,5 +1,24 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
+// API Response types
+interface LoginResponse {
+  success: boolean
+  user?: any
+  message?: string
+}
+
+interface RegisterResponse {
+  success: boolean
+  user?: any
+  message?: string
+}
+
+interface UserResponse {
+  success: boolean
+  user?: any
+  message?: string
+}
+
 class ApiService {
   private baseURL: string
 
@@ -38,15 +57,15 @@ class ApiService {
   }
 
   // Auth endpoints
-  async login(email: string, password: string) {
-    return this.request('/auth/login', {
+  async login(email: string, password: string): Promise<LoginResponse> {
+    return this.request<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
   }
 
-  async register(email: string, username: string, displayName: string, password: string) {
-    return this.request('/auth/register', {
+  async register(email: string, username: string, displayName: string, password: string): Promise<RegisterResponse> {
+    return this.request<RegisterResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, username, displayName, password }),
     })
@@ -58,8 +77,8 @@ class ApiService {
     })
   }
 
-  async getCurrentUser() {
-    return this.request('/auth/me')
+  async getCurrentUser(): Promise<UserResponse> {
+    return this.request<UserResponse>('/auth/me')
   }
 
   // Courses endpoints

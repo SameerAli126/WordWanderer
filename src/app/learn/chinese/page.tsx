@@ -7,8 +7,47 @@ import { useRouter } from 'next/navigation'
 import LearningRoadmap from '@/components/lesson/LearningRoadmap'
 import { Button } from '@/components/ui/button'
 
+// Type definitions for the course data
+interface Lesson {
+  id: string
+  title: string
+  description: string
+  type: 'vocabulary' | 'grammar' | 'conversation'
+  difficulty: 'easy' | 'medium' | 'hard'
+  xpReward: number
+  isCompleted: boolean
+  isLocked: boolean
+  isCurrent: boolean
+  order: number
+}
+
+interface Unit {
+  id: string
+  title: string
+  description: string
+  color: string
+  icon: string
+  isUnlocked: boolean
+  completedLessons: number
+  totalLessons: number
+  lessons: Lesson[]
+}
+
+interface CourseData {
+  id: string
+  title: string
+  description: string
+  language: {
+    code: string
+    name: string
+    nativeName: string
+    flag: string
+  }
+  units: Unit[]
+}
+
 // Mock Chinese course data with proper roadmap structure
-const chineseCourseData = {
+const chineseCourseData: CourseData = {
   id: 'chinese-course',
   title: 'Chinese for Beginners',
   description: 'Master Mandarin Chinese with characters, pinyin, and cultural context',
