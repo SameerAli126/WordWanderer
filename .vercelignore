@@ -42,7 +42,9 @@ docs/
 
 # Netlify config (moved to temp)
 netlify.toml
-NETLIFY-SETUP-INSTRUCTIONS.md
+
+# Local backend setup docs
+LOCAL-BACKEND-SETUP.md
 
 # Test files
 __tests__/
