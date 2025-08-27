@@ -277,8 +277,9 @@ export default function ChineseCoursePage() {
               <Button
                 variant="ghost"
                 onClick={handleBack}
-                leftIcon={<ArrowLeft className="w-5 h-5" />}
+                className="flex items-center gap-2"
               >
+                <ArrowLeft className="w-5 h-5" />
                 Back to Courses
               </Button>
               <div className="flex items-center space-x-3">

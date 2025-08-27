@@ -13,7 +13,7 @@ import {
   Globe
 } from 'lucide-react'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getLanguageFlag, getDifficultyColor } from '@/lib/utils'
 
@@ -224,11 +224,10 @@ export default function CoursesPage() {
 
                   {/* Course Content */}
                   <div className="p-6">
-                    <CardHeader
-                      title={course.title}
-                      subtitle={course.language.nativeName}
-                      className="mb-3"
-                    />
+                    <CardHeader className="mb-3">
+                      <CardTitle>{course.title}</CardTitle>
+                      <CardDescription>{course.language.nativeName}</CardDescription>
+                    </CardHeader>
                     
                     <p className="text-gray-600 text-sm mb-4 line-clamp-2">
                       {course.description}
@@ -257,10 +256,9 @@ export default function CoursesPage() {
                     {/* Action Button */}
                     <Link href={`/courses/${course._id}`}>
                       <Button
-                        fullWidth
-                        leftIcon={<Play className="w-4 h-4" />}
-                        className="group"
+                        className="w-full group flex items-center gap-2"
                       >
+                        <Play className="w-4 h-4" />
                         Start Learning
                       </Button>
                     </Link>

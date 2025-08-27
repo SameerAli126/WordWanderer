@@ -242,8 +242,9 @@ export default function DemoPage() {
               variant="ghost"
               onClick={handlePrevious}
               disabled={currentQuestionIndex === 0}
-              leftIcon={<ArrowLeft className="w-4 h-4" />}
+              className="flex items-center gap-2"
             >
+              <ArrowLeft className="w-4 h-4" />
               Previous
             </Button>
 
@@ -255,9 +256,10 @@ export default function DemoPage() {
 
             <Button
               onClick={handleNext}
-              rightIcon={<ArrowRight className="w-4 h-4" />}
+              className="flex items-center gap-2"
             >
               {currentQuestionIndex === mockQuestions.length - 1 ? 'Finish' : 'Next'}
+              <ArrowRight className="w-4 h-4" />
             </Button>
           </motion.div>
         )}

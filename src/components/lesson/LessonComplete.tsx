@@ -175,11 +175,10 @@ export default function LessonComplete({
               <Button
                 onClick={onContinue}
                 size="lg"
-                fullWidth
-                rightIcon={<ArrowRight className="w-5 h-5" />}
-                className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700"
+                className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 flex items-center gap-2"
               >
                 Continue Learning
+                <ArrowRight className="w-5 h-5" />
               </Button>
 
               {onReview && session.accuracy < 100 && (

@@ -203,9 +203,9 @@ export default function HomePage() {
               <Link href="/learn/chinese">
                 <Button
                   size="lg"
-                  className="bg-white text-red-600 hover:bg-red-50 border-2 border-white"
-                  leftIcon={<Play className="w-5 h-5" />}
+                  className="bg-white text-red-600 hover:bg-red-50 border-2 border-white flex items-center gap-2"
                 >
+                  <Play className="w-5 h-5" />
                   Start Chinese Course
                 </Button>
               </Link>
