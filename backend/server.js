@@ -90,18 +90,23 @@ app.get('/', (req, res) => {
 app.use(notFound);
 app.use(errorHandler);
 
-// MongoDB connection
+// MongoDB connection with fallback
+let isMongoConnected = false;
+
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    isMongoConnected = true;
   } catch (error) {
-    console.error('MongoDB connection error:', error);
-    process.exit(1);
+    console.error('❌ MongoDB connection error:', error.message);
+    console.log('⚠️  Running in fallback mode without database');
+    console.log('🔧 To fix: Check MongoDB Atlas IP whitelist or connection string');
+    isMongoConnected = false;
   }
 };
 
@@ -111,12 +116,13 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     await connectDB();
-    
+
     const server = app.listen(PORT, () => {
       console.log(`🚀 WordWanderer API Server running on port ${PORT}`);
       console.log(`📱 Environment: ${process.env.NODE_ENV}`);
       console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
+      console.log(`💾 Database: ${isMongoConnected ? 'Connected' : 'Fallback mode'}`);
     });
 
     // Graceful shutdown

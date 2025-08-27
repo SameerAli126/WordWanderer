@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import QuestionCard from '@/components/lesson/QuestionCard'
 import LessonProgress from '@/components/lesson/LessonProgress'
 import LessonComplete from '@/components/lesson/LessonComplete'
-import Button from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
 import { Question, LessonSession } from '@/types'
 
 // Mock Chinese lesson data

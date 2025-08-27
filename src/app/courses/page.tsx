@@ -13,8 +13,8 @@ import {
   Globe
 } from 'lucide-react'
 import Link from 'next/link'
-import Card, { CardContent, CardHeader } from '@/components/ui/Card'
-import Button from '@/components/ui/Button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { getLanguageFlag, getDifficultyColor } from '@/lib/utils'
 
 interface Course {

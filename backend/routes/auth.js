@@ -6,6 +6,29 @@ const { auth } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Demo user for fallback mode
+const demoUser = {
+  _id: 'demo-user-id',
+  email: 'demo@wordwanderer.com',
+  username: 'demouser',
+  displayName: 'Demo User',
+  totalXP: 1250,
+  currentStreak: 5,
+  longestStreak: 12,
+  gems: 150,
+  hearts: 5,
+  achievements: ['first_lesson', 'daily_login', 'week_streak'],
+  currentLanguage: 'chinese',
+  level: 8,
+  createdAt: new Date('2024-01-01'),
+  lastLoginAt: new Date()
+};
+
+// Check if MongoDB is available
+const isMongoAvailable = () => {
+  return require('mongoose').connection.readyState === 1;
+};
+
 // Generate JWT token
 const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, {
@@ -45,6 +68,41 @@ router.post('/register', [
     }
 
     const { email, username, displayName, password } = req.body;
+
+    // Check if MongoDB is connected
+    if (!isMongoAvailable()) {
+      // Fallback mode - simulate registration success
+      console.log('🔄 Registration in fallback mode (MongoDB not connected)');
+
+      // Generate a demo user ID
+      const demoUserId = `demo-${Date.now()}`;
+      const token = generateToken(demoUserId);
+
+      // Set cookie
+      res.cookie('auth-token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'User registered successfully (Demo Mode)',
+        user: {
+          id: demoUserId,
+          email: email,
+          username: username,
+          displayName: displayName,
+          totalXP: 0,
+          currentStreak: 0,
+          longestStreak: 0,
+          gems: 100,
+          isDemo: true
+        },
+        token
+      });
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -130,29 +188,43 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
-    // Find user by email
-    const user = await User.findOne({ email }).select('+password');
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
+    let user;
+    let token;
+
+    if (!isMongoAvailable()) {
+      // Fallback mode - accept demo credentials
+      if (email === 'demo@wordwanderer.com' && password === 'demo123') {
+        user = demoUser;
+        token = generateToken(demoUser._id);
+      } else {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password (Demo mode: use demo@wordwanderer.com / demo123)'
+        });
+      }
+    } else {
+      // Normal database mode
+      user = await User.findOne({ email }).select('+password');
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password'
+        });
+      }
+
+      // Check password
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password'
+        });
+      }
+
+      // Update last active
+      await user.updateLastActive();
+      token = generateToken(user._id);
     }
-
-    // Check password
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
-
-    // Update last active
-    await user.updateLastActive();
-
-    // Generate token
-    const token = generateToken(user._id);
 
     // Set cookie
     res.cookie('auth-token', token, {
@@ -216,13 +288,28 @@ router.post('/logout', auth, async (req, res) => {
 // @access  Private
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId);
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+    let user;
+
+    if (!isMongoAvailable()) {
+      // Fallback mode - return demo user if token matches
+      if (req.user.userId === demoUser._id) {
+        user = demoUser;
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found (Demo mode)'
+        });
+      }
+    } else {
+      // Normal database mode
+      user = await User.findById(req.user.userId);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
     }
 
     res.json({
@@ -232,15 +319,18 @@ router.get('/me', auth, async (req, res) => {
         email: user.email,
         username: user.username,
         displayName: user.displayName,
-        avatar: user.avatar,
+        avatar: user.avatar || null,
         totalXP: user.totalXP,
         currentStreak: user.currentStreak,
         longestStreak: user.longestStreak,
-        preferences: user.preferences,
-        achievements: user.achievements,
-        courses: user.courses,
+        gems: user.gems,
+        hearts: user.hearts,
+        level: user.level,
+        preferences: user.preferences || {},
+        achievements: user.achievements || [],
+        courses: user.courses || [],
         joinedAt: user.createdAt,
-        lastActiveAt: user.lastActiveAt
+        lastActiveAt: user.lastLoginAt || user.lastActiveAt
       }
     });
 

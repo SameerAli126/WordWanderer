@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import { X, Heart, Zap } from 'lucide-react'
 import ProgressBar from '@/components/ui/ProgressBar'
-import Button from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
 
 interface LessonProgressProps {
   currentQuestion: number

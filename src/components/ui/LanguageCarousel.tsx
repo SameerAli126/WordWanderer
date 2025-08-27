@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Play, Lock } from 'lucide-react'
 import Link from 'next/link'
-import Button from './Button'
+import { Button } from './button'
 import { cn } from '@/lib/utils'
 
 interface Language {
@@ -191,14 +191,14 @@ export default function LanguageCarousel({
                       <Link href={currentLanguage.code === 'zh' ? '/learn/chinese' : `/courses?language=${currentLanguage.code}`}>
                         <Button
                           size="lg"
-                          leftIcon={<Play className="w-5 h-5" />}
                           className={cn(
                             "bg-gradient-to-r hover:scale-105 transition-all duration-200",
                             currentLanguage.code === 'zh'
                               ? "from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
-                              : "from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700"
+                              : "from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                           )}
                         >
+                          <Play className="w-5 h-5 mr-2" />
                           {currentLanguage.code === 'zh' ? 'Start Chinese Course' : 'Start Learning'}
                         </Button>
                       </Link>
@@ -215,8 +215,8 @@ export default function LanguageCarousel({
                         size="lg"
                         variant="outline"
                         disabled
-                        leftIcon={<Lock className="w-5 h-5" />}
                       >
+                        <Lock className="w-5 h-5 mr-2" />
                         Coming Soon
                       </Button>
                       {currentLanguage.comingSoon && (

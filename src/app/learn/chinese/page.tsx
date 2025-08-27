@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Trophy, Flame, Zap } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import LearningRoadmap from '@/components/lesson/LearningRoadmap'
-import Button from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
 
 // Mock Chinese course data with proper roadmap structure
 const chineseCourseData = {

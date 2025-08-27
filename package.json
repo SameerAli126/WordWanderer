@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "build:netlify": "next build",
+    "build:vercel": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "vercel-build": "next build",
+    "postbuild": "next-sitemap"
   },
   "dependencies": {
     "@next-auth/mongodb-adapter": "^1.1.3",

@@ -6,8 +6,8 @@ import { Eye, EyeOff, Mail, Lock, User, BookOpen } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useUserStore } from '@/store/useUserStore'
-import Button from '@/components/ui/Button'
-import Card, { CardContent } from '@/components/ui/Card'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -27,7 +27,7 @@ export default function RegisterPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/dashboard')
+      router.push('/new-dashboard')
     }
   }, [isAuthenticated, router])
 

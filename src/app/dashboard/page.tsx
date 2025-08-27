@@ -146,7 +146,14 @@ function DashboardContent() {
 
   // Don't render if not authenticated (will redirect)
   if (!isAuthenticated || !user) {
-    return null
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-green-900/20 to-blue-900/20 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="text-xl mb-4">Please log in to access WordWanderer</div>
+          <div className="text-sm opacity-75">Redirecting to login...</div>
+        </div>
+      </div>
+    )
   }
 
   return (

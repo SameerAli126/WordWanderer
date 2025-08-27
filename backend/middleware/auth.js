@@ -1,6 +1,20 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+// Check if MongoDB is available
+const isMongoAvailable = () => {
+  return require('mongoose').connection.readyState === 1;
+};
+
+// Demo user for fallback mode
+const demoUser = {
+  _id: 'demo-user-id',
+  email: 'demo@wordwanderer.com',
+  username: 'demouser',
+  displayName: 'Demo User',
+  isActive: true
+};
+
 const auth = async (req, res, next) => {
   try {
     // Get token from cookie or Authorization header
@@ -23,14 +37,28 @@ const auth = async (req, res, next) => {
     try {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      // Check if user still exists
-      const user = await User.findById(decoded.userId);
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Token is no longer valid. User not found.'
-        });
+
+      let user;
+
+      if (!isMongoAvailable()) {
+        // Fallback mode - use demo user if token matches
+        if (decoded.userId === demoUser._id) {
+          user = demoUser;
+        } else {
+          return res.status(401).json({
+            success: false,
+            message: 'Token is no longer valid. User not found (Demo mode).'
+          });
+        }
+      } else {
+        // Normal database mode
+        user = await User.findById(decoded.userId);
+        if (!user) {
+          return res.status(401).json({
+            success: false,
+            message: 'Token is no longer valid. User not found.'
+          });
+        }
       }
 
       // Check if user is active
@@ -90,9 +118,19 @@ const optionalAuth = async (req, res, next) => {
       try {
         // Verify token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        
-        // Check if user still exists
-        const user = await User.findById(decoded.userId);
+
+        let user;
+
+        if (!isMongoAvailable()) {
+          // Fallback mode - use demo user if token matches
+          if (decoded.userId === demoUser._id) {
+            user = demoUser;
+          }
+        } else {
+          // Normal database mode
+          user = await User.findById(decoded.userId);
+        }
+
         if (user && user.isActive) {
           // Add user info to request
           req.user = {

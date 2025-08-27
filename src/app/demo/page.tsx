@@ -7,7 +7,7 @@ import { Question, LessonSession } from '@/types'
 import QuestionCard from '@/components/lesson/QuestionCard'
 import LessonProgress from '@/components/lesson/LessonProgress'
 import LessonComplete from '@/components/lesson/LessonComplete'
-import Button from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 
 // Mock Chinese lesson data
