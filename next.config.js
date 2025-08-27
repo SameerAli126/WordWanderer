@@ -28,10 +28,6 @@ const nextConfig = {
   },
   // Output configuration for Vercel
   output: 'standalone',
-  // Environment variables
-  env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
-  },
   // Headers for security and performance
   async headers() {
     return [
