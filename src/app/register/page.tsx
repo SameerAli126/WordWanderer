@@ -274,10 +274,9 @@ export default function RegisterPage() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                fullWidth
                 size="lg"
-                isLoading={isLoading}
-                className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700"
               >
                 {isLoading ? 'Creating Account...' : 'Create Account'}
               </Button>

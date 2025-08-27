@@ -7,6 +7,7 @@ export interface User {
   totalXP: number
   currentStreak: number
   longestStreak: number
+  gems: number
   joinedAt: Date
   lastActiveAt: Date
   preferences: UserPreferences

@@ -186,7 +186,7 @@ export default function LessonComplete({
                   onClick={onReview}
                   variant="outline"
                   size="lg"
-                  fullWidth
+                  className="w-full"
                 >
                   Review Mistakes
                 </Button>
