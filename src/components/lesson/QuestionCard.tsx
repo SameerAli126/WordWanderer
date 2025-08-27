@@ -130,12 +130,12 @@ export default function QuestionCard({
           <div className="space-y-6">
             <div className="text-center">
               <Button
-                variant="primary"
+                variant="default"
                 size="lg"
-                leftIcon={<Volume2 className="w-6 h-6" />}
                 onClick={playAudio}
-                className="mb-4"
+                className="mb-4 flex items-center gap-2"
               >
+                <Volume2 className="w-6 h-6" />
                 Play Audio
               </Button>
               <p className="text-gray-600">Listen and type what you hear</p>
@@ -215,9 +215,10 @@ export default function QuestionCard({
               <Button
                 variant="ghost"
                 size="sm"
-                leftIcon={<Lightbulb className="w-4 h-4" />}
                 onClick={() => setShowHint(!showHint)}
+                className="flex items-center gap-2"
               >
+                <Lightbulb className="w-4 h-4" />
                 {showHint ? 'Hide Hint' : 'Show Hint'}
               </Button>
             )}

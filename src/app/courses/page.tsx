@@ -202,8 +202,8 @@ export default function CoursesPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 * index }}
               >
-              <Card hover clickable className="h-full">
-                <CardContent padding="none">
+              <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
+                <CardContent className="p-0">
                   {/* Course Image */}
                   <div className="relative h-48 bg-gradient-to-br from-primary-100 to-primary-200 rounded-t-2xl overflow-hidden">
                     <div className="absolute inset-0 flex items-center justify-center">
