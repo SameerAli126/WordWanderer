@@ -43,7 +43,8 @@ const allowedOrigins = [
   'http://localhost:3002',
   'https://wordwanderer.vercel.app',
   'https://wordwanderer-git-production-sameerali126.vercel.app',
-  'https://wordwanderer-git-development-sameerali126.vercel.app'
+  'https://wordwanderer-git-development-sameerali126.vercel.app',
+  'https://curiously-balanced-tarpon.ngrok-free.app'
 ];
 
 // Add custom FRONTEND_URL if provided
