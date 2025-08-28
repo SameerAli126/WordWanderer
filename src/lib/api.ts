@@ -58,27 +58,27 @@ class ApiService {
 
   // Auth endpoints
   async login(email: string, password: string): Promise<LoginResponse> {
-    return this.request<LoginResponse>('/auth/login', {
+    return this.request<LoginResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
   }
 
   async register(email: string, username: string, displayName: string, password: string): Promise<RegisterResponse> {
-    return this.request<RegisterResponse>('/auth/register', {
+    return this.request<RegisterResponse>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, username, displayName, password }),
     })
   }
 
   async logout() {
-    return this.request('/auth/logout', {
+    return this.request('/api/auth/logout', {
       method: 'POST',
     })
   }
 
   async getCurrentUser(): Promise<UserResponse> {
-    return this.request<UserResponse>('/auth/me')
+    return this.request<UserResponse>('/api/auth/me')
   }
 
   // Courses endpoints
