@@ -22,14 +22,33 @@ echo "🌐 Starting ngrok tunnel..."
 ngrok http 5000 &
 NGROK_PID=$!
 
-echo "✅ Backend and ngrok started!"
-echo ""
-echo "📋 Next steps:"
-echo "1. Check the ngrok URL in the terminal output above"
-echo "2. Copy the HTTPS URL (e.g., https://abc123.ngrok.io)"
-echo "3. Add it to your Vercel environment variables as NEXT_PUBLIC_API_URL"
-echo "4. Redeploy your Vercel app"
-echo ""
+# Wait for ngrok to establish tunnel
+echo "⏳ Waiting for ngrok tunnel to establish..."
+sleep 5
+
+# Get the ngrok URL
+echo "🔍 Fetching ngrok URL..."
+NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o 'https://[^"]*\.ngrok\.io')
+
+if [ -n "$NGROK_URL" ]; then
+    echo ""
+    echo "🎉 SUCCESS! Your ngrok URL is:"
+    echo "📡 $NGROK_URL"
+    echo ""
+    echo "📋 Next steps:"
+    echo "1. Copy this URL: $NGROK_URL"
+    echo "2. Add it to your Vercel environment variables as NEXT_PUBLIC_API_URL"
+    echo "3. Redeploy your Vercel app"
+    echo ""
+else
+    echo "⚠️  Could not fetch ngrok URL automatically."
+    echo "📋 Manual steps:"
+    echo "1. Open http://localhost:4040 in your browser"
+    echo "2. Copy the HTTPS URL from the ngrok dashboard"
+    echo "3. Add it to your Vercel environment variables as NEXT_PUBLIC_API_URL"
+    echo ""
+fi
+
 echo "🛑 To stop everything, press Ctrl+C"
 
 # Keep the script running
