@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "wordwanderer new UI/package.json",
+      "use": "@vercel/next"
+    }
+  ]
+}
