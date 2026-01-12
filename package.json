@@ -8,11 +8,6 @@
     "start": "npm --prefix \"wordwanderer new UI\" run start",
     "lint": "npm --prefix \"wordwanderer new UI\" run lint",
     "type-check": "npm --prefix \"wordwanderer new UI\" run type-check",
-    "dev:old": "next dev",
-    "build:old": "next build",
-    "start:old": "next start",
-    "lint:old": "next lint",
-    "type-check:old": "tsc --noEmit",
     "dev:frontend": "npm --prefix \"wordwanderer new UI\" run dev",
     "dev:backend": "npm --prefix backend run dev"
   },
