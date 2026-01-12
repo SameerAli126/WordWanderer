@@ -33,7 +33,6 @@ tmp/
 
 # Archive and old files
 src/archive/
-wordwanderer new UI/
 
 # Documentation (keep in repo but not in deployment)
 docs/
