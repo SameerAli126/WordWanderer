@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 
@@ -23,6 +24,17 @@ const demoUser = {
   createdAt: new Date('2024-01-01'),
   lastLoginAt: new Date()
 };
+const demoRecoveryCode = '123456789';
+
+const fallbackUsersById = new Map();
+const fallbackUsersByEmail = new Map();
+const fallbackUsersByUsername = new Map();
+
+const addFallbackUser = (user) => {
+  fallbackUsersById.set(user._id, user);
+  fallbackUsersByEmail.set(user.email, user);
+  fallbackUsersByUsername.set(user.username, user);
+};
 
 // Check if MongoDB is available
 const isMongoAvailable = () => {
@@ -34,6 +46,10 @@ const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '7d'
   });
+};
+
+const generateRecoveryCode = () => {
+  return `${Math.floor(100000000 + Math.random() * 900000000)}`;
 };
 
 // @route   POST /api/auth/register
@@ -53,8 +69,8 @@ router.post('/register', [
     .trim()
     .withMessage('Display name must be 2-50 characters'),
   body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
 ], async (req, res) => {
   try {
     // Check for validation errors
@@ -68,15 +84,55 @@ router.post('/register', [
     }
 
     const { email, username, displayName, password } = req.body;
+    const recoveryCode = generateRecoveryCode();
 
     // Check if MongoDB is connected
     if (!isMongoAvailable()) {
-      // Fallback mode - simulate registration success
-      console.log('🔄 Registration in fallback mode (MongoDB not connected)');
+      // Fallback mode - keep users in memory for local dev
+      console.log('Registration in fallback mode (MongoDB not connected)');
 
-      // Generate a demo user ID
-      const demoUserId = `demo-${Date.now()}`;
+      if (fallbackUsersByEmail.has(email) || fallbackUsersByUsername.has(username)) {
+        return res.status(409).json({
+          success: false,
+          message: fallbackUsersByEmail.has(email)
+            ? 'User with this email already exists'
+            : 'Username is already taken'
+        });
+      }
+
+      const demoUserId = `demo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const token = generateToken(demoUserId);
+      const passwordHash = await bcrypt.hash(password, 12);
+      const recoveryCodeHash = await bcrypt.hash(recoveryCode, 12);
+
+      const fallbackUser = {
+        _id: demoUserId,
+        email,
+        username,
+        displayName,
+        totalXP: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        gems: 100,
+        hearts: 5,
+        level: 1,
+        preferences: {
+          dailyGoal: 10,
+          soundEnabled: true,
+          notificationsEnabled: true,
+          theme: 'light',
+          language: 'en'
+        },
+        achievements: [],
+        courses: [],
+        createdAt: new Date(),
+        lastLoginAt: new Date(),
+        passwordHash,
+        recoveryCodeHash,
+        isDemo: true
+      };
+
+      addFallbackUser(fallbackUser);
 
       // Set cookie
       res.cookie('auth-token', token, {
@@ -90,16 +146,17 @@ router.post('/register', [
         success: true,
         message: 'User registered successfully (Demo Mode)',
         user: {
-          id: demoUserId,
-          email: email,
-          username: username,
-          displayName: displayName,
-          totalXP: 0,
-          currentStreak: 0,
-          longestStreak: 0,
-          gems: 100,
+          id: fallbackUser._id,
+          email: fallbackUser.email,
+          username: fallbackUser.username,
+          displayName: fallbackUser.displayName,
+          totalXP: fallbackUser.totalXP,
+          currentStreak: fallbackUser.currentStreak,
+          longestStreak: fallbackUser.longestStreak,
+          gems: fallbackUser.gems,
           isDemo: true
         },
+        recoveryCode,
         token
       });
     }
@@ -119,11 +176,13 @@ router.post('/register', [
     }
 
     // Create new user
+    const recoveryCodeHash = await bcrypt.hash(recoveryCode, 12);
     const user = new User({
       email,
       username,
       displayName,
-      password
+      password,
+      recoveryCodeHash
     });
 
     await user.save();
@@ -151,6 +210,7 @@ router.post('/register', [
         currentStreak: user.currentStreak,
         longestStreak: user.longestStreak
       },
+      recoveryCode,
       token
     });
 
@@ -192,15 +252,30 @@ router.post('/login', [
     let token;
 
     if (!isMongoAvailable()) {
-      // Fallback mode - accept demo credentials
-      if (email === 'demo@wordwanderer.com' && password === 'demo123') {
+      // Fallback mode - check in-memory users or demo credentials
+      if (email === demoUser.email && password === 'demo123') {
         user = demoUser;
         token = generateToken(demoUser._id);
       } else {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid email or password (Demo mode: use demo@wordwanderer.com / demo123)'
-        });
+        const fallbackUser = fallbackUsersByEmail.get(email);
+        if (!fallbackUser) {
+          return res.status(401).json({
+            success: false,
+            message: 'Invalid email or password'
+          });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, fallbackUser.passwordHash);
+        if (!isPasswordValid) {
+          return res.status(401).json({
+            success: false,
+            message: 'Invalid email or password'
+          });
+        }
+
+        fallbackUser.lastLoginAt = new Date();
+        user = fallbackUser;
+        token = generateToken(fallbackUser._id);
       }
     } else {
       // Normal database mode
@@ -261,6 +336,98 @@ router.post('/login', [
   }
 });
 
+// @route   POST /api/auth/reset-password
+// @desc    Reset password using recovery code
+// @access  Public
+router.post('/reset-password', [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email'),
+  body('recoveryCode')
+    .matches(/^\d{9}$/)
+    .withMessage('Recovery code must be a 9-digit number'),
+  body('newPassword')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { email, recoveryCode, newPassword } = req.body;
+
+    if (!isMongoAvailable()) {
+      if (email === demoUser.email && recoveryCode === demoRecoveryCode) {
+        return res.json({
+          success: true,
+          message: 'Password reset successful (Demo Mode)'
+        });
+      }
+
+      const fallbackUser = fallbackUsersByEmail.get(email);
+      if (!fallbackUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found (Demo mode)'
+        });
+      }
+
+      const isCodeValid = await bcrypt.compare(recoveryCode, fallbackUser.recoveryCodeHash);
+      if (!isCodeValid) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid recovery code'
+        });
+      }
+
+      fallbackUser.passwordHash = await bcrypt.hash(newPassword, 12);
+      fallbackUser.lastLoginAt = new Date();
+
+      return res.json({
+        success: true,
+        message: 'Password reset successful (Demo Mode)'
+      });
+    }
+
+    const user = await User.findOne({ email }).select('+password +recoveryCodeHash');
+    if (!user || !user.recoveryCodeHash) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found or recovery code not set'
+      });
+    }
+
+    const isCodeValid = await bcrypt.compare(recoveryCode, user.recoveryCodeHash);
+    if (!isCodeValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid recovery code'
+      });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Password reset successful'
+    });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
 // @route   POST /api/auth/logout
 // @desc    Logout user
 // @access  Private
@@ -291,14 +458,18 @@ router.get('/me', auth, async (req, res) => {
     let user;
 
     if (!isMongoAvailable()) {
-      // Fallback mode - return demo user if token matches
+      // Fallback mode - return demo or in-memory user
       if (req.user.userId === demoUser._id) {
         user = demoUser;
       } else {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found (Demo mode)'
-        });
+        const fallbackUser = fallbackUsersById.get(req.user.userId);
+        if (!fallbackUser) {
+          return res.status(404).json({
+            success: false,
+            message: 'User not found (Demo mode)'
+          });
+        }
+        user = fallbackUser;
       }
     } else {
       // Normal database mode

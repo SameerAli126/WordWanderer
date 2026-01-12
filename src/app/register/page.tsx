@@ -11,7 +11,7 @@ import { Card, CardContent } from '@/components/ui/card'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { register, isLoading, isAuthenticated } = useUserStore()
+  const { register, isLoading, isAuthenticated, enableDemoMode } = useUserStore()
   
   const [formData, setFormData] = useState({
     email: '',
@@ -70,8 +70,8 @@ export default function RegisterPage() {
 
     if (!formData.password) {
       newErrors.password = 'Password is required'
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters'
     }
 
     if (!formData.confirmPassword) {
@@ -99,6 +99,11 @@ export default function RegisterPage() {
     if (success) {
       router.push('/login')
     }
+  }
+
+  const handleDemoMode = () => {
+    enableDemoMode()
+    router.push('/new-dashboard')
   }
 
   return (
@@ -279,6 +284,17 @@ export default function RegisterPage() {
                 className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700"
               >
                 {isLoading ? 'Creating Account...' : 'Create Account'}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                disabled={isLoading}
+                className="w-full"
+                onClick={handleDemoMode}
+              >
+                Try Demo Mode
               </Button>
             </form>
 

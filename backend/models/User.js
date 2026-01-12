@@ -162,7 +162,11 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters']
+    minlength: [8, 'Password must be at least 8 characters']
+  },
+  recoveryCodeHash: {
+    type: String,
+    default: null
   },
   avatar: {
     type: String,
@@ -223,6 +227,7 @@ const userSchema = new mongoose.Schema({
     transform: function(doc, ret) {
       delete ret.password;
       delete ret.emailVerificationToken;
+      delete ret.recoveryCodeHash;
       delete ret.passwordResetToken;
       delete ret.passwordResetExpires;
       return ret;

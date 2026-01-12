@@ -3,11 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "dev": "concurrently \"npm --prefix backend run dev\" \"npm --prefix \\\"wordwanderer new UI\\\" run dev\"",
+    "build": "npm --prefix \"wordwanderer new UI\" run build",
+    "start": "npm --prefix \"wordwanderer new UI\" run start",
+    "lint": "npm --prefix \"wordwanderer new UI\" run lint",
+    "type-check": "npm --prefix \"wordwanderer new UI\" run type-check",
+    "dev:old": "next dev",
+    "build:old": "next build",
+    "start:old": "next start",
+    "lint:old": "next lint",
+    "type-check:old": "tsc --noEmit",
+    "dev:frontend": "npm --prefix \"wordwanderer new UI\" run dev",
+    "dev:backend": "npm --prefix backend run dev"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
@@ -70,6 +77,7 @@
     "@typescript-eslint/eslint-plugin": "^6.12.0",
     "@typescript-eslint/parser": "^6.12.0",
     "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
     "eslint": "^8.54.0",
     "eslint-config-next": "14.0.4",
     "postcss": "^8.4.31",

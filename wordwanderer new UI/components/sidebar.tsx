@@ -65,11 +65,33 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
   const getSidebarClasses = () => {
     switch (theme) {
       case "light":
-        return "hidden lg:block w-64 bg-white border-r border-gray-200 shadow-sm"
+        return "hidden lg:block w-64 bg-white/95 border-r border-gray-200 shadow-sm"
       case "wanderer":
-        return "hidden lg:block w-64 bg-gradient-to-b from-slate-800/90 to-slate-900/90 border-r border-green-400/30 shadow-xl backdrop-blur-sm"
+        return "hidden lg:block w-64 bg-gradient-to-b from-slate-900/90 via-slate-900/80 to-slate-950/90 border-r border-emerald-400/20 shadow-2xl backdrop-blur"
       default:
-        return "hidden lg:block w-64 bg-gradient-to-b from-slate-800 to-slate-900 border-r border-slate-600 shadow-xl"
+        return "hidden lg:block w-64 bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-slate-700/60 shadow-2xl"
+    }
+  }
+
+  const getTabsListClasses = () => {
+    switch (theme) {
+      case "light":
+        return "bg-gray-100 border border-gray-200"
+      case "wanderer":
+        return "bg-slate-900/60 border border-emerald-400/20"
+      default:
+        return "bg-slate-900/60 border border-slate-700/60"
+    }
+  }
+
+  const getTabsTriggerClasses = () => {
+    switch (theme) {
+      case "light":
+        return "text-xs rounded-full data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
+      case "wanderer":
+        return "text-xs rounded-full data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-100"
+      default:
+        return "text-xs rounded-full data-[state=active]:bg-slate-800 data-[state=active]:text-white"
     }
   }
 
@@ -77,48 +99,55 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     if (isActive) {
       switch (theme) {
         case "light":
-          return "bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-400 hover:to-blue-500 text-white shadow-lg"
+          return "bg-gray-900 text-white shadow-sm"
         case "wanderer":
-          return "bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-300 hover:to-blue-400 text-white shadow-lg"
+          return "bg-emerald-500/15 text-emerald-100 border-emerald-400/40 shadow-[0_10px_25px_-20px_rgba(16,185,129,0.9)]"
         default:
-          return "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white shadow-lg"
+          return "bg-slate-800/80 text-white border-slate-600/60 shadow-[0_10px_25px_-20px_rgba(15,23,42,0.9)]"
       }
-    } else {
-      switch (theme) {
-        case "light":
-          return "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-        case "wanderer":
-          return "text-slate-300 hover:text-white hover:bg-green-400/10"
-        default:
-          return "text-slate-300 hover:text-white hover:bg-slate-700/50"
-      }
+    }
+
+    switch (theme) {
+      case "light":
+        return "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+      case "wanderer":
+        return "text-slate-300 hover:text-white hover:bg-slate-800/60 hover:border-emerald-400/20"
+      default:
+        return "text-slate-300 hover:text-white hover:bg-slate-800/60 hover:border-slate-600/60"
     }
   }
 
   const getQuickActionColor = (color: string) => {
     const colors = {
-      purple: "hover:border-purple-400 hover:text-purple-400",
-      green: "hover:border-green-400 hover:text-green-400",
-      blue: "hover:border-blue-400 hover:text-blue-400",
-      red: "hover:border-red-400 hover:text-red-400",
+      purple: "hover:border-purple-400 hover:text-purple-300",
+      green: "hover:border-emerald-400 hover:text-emerald-300",
+      blue: "hover:border-blue-400 hover:text-blue-300",
+      red: "hover:border-rose-400 hover:text-rose-300",
     }
     return colors[color as keyof typeof colors] || colors.blue
+  }
+
+  const getQuickActionClasses = (color: string) => {
+    const base =
+      theme === "light"
+        ? "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+        : "border-slate-700/60 bg-slate-900/40 text-slate-200 hover:bg-slate-800/60"
+    return `${base} ${getQuickActionColor(color)}`
   }
 
   const getMobileNavClasses = () => {
     switch (theme) {
       case "light":
-        return "lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-50 shadow-lg"
+        return "lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 border-t border-gray-200 p-2 z-50 shadow-lg"
       case "wanderer":
-        return "lg:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-slate-800/95 to-slate-900/95 border-t border-green-400/30 p-2 z-50 shadow-2xl backdrop-blur-sm"
+        return "lg:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-slate-900/95 to-slate-950/95 border-t border-emerald-400/20 p-2 z-50 shadow-2xl backdrop-blur"
       default:
-        return "lg:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-slate-800 to-slate-900 border-t border-slate-600 p-2 z-50 shadow-2xl"
+        return "lg:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-slate-900 to-slate-950 border-t border-slate-700/60 p-2 z-50 shadow-2xl"
     }
   }
 
-  // Items for mobile bottom nav (first 4 + more dropdown)
   const mobileNavItems = navigationItems.slice(0, 4)
-  const moreItems = navigationItems.slice(4) // SHOP, PROFILE, SETTINGS
+  const moreItems = navigationItems.slice(4)
 
   return (
     <>
@@ -126,11 +155,11 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
       <aside className={getSidebarClasses()}>
         <div className="p-4 h-full flex flex-col">
           <Tabs defaultValue="nav" className="flex-1">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="nav" className="text-xs">
+            <TabsList className={`grid w-full grid-cols-2 mb-4 rounded-full p-1 ${getTabsListClasses()}`}>
+              <TabsTrigger value="nav" className={getTabsTriggerClasses()}>
                 Navigation
               </TabsTrigger>
-              <TabsTrigger value="tools" className="text-xs">
+              <TabsTrigger value="tools" className={getTabsTriggerClasses()}>
                 Tools
               </TabsTrigger>
             </TabsList>
@@ -140,10 +169,10 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                 {navigationItems.map((item) => (
                   <Button
                     key={item.label}
-                    variant={currentView === item.key ? "default" : "ghost"}
-                    className={`w-full justify-start gap-3 transition-all duration-300 hover:scale-105 ${getButtonClasses(
-                      currentView === item.key,
-                    )}`}
+                    variant="ghost"
+                    className={`w-full justify-start gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 border border-transparent ${
+                      currentView === item.key ? "" : "hover:translate-x-0.5"
+                    } ${getButtonClasses(currentView === item.key)}`}
                     onClick={() => handleNavClick(item.key)}
                   >
                     <item.icon className="w-5 h-5" />
@@ -153,9 +182,9 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
               </nav>
             </TabsContent>
 
-            <TabsContent value="tools" className="space-y-3 flex-1">
+            <TabsContent value="tools" className="space-y-4 flex-1">
               <div className="space-y-2">
-                <h3 className={`text-sm font-semibold ${theme === "light" ? "text-gray-700" : "text-slate-300"}`}>
+                <h3 className={`text-xs uppercase tracking-[0.2em] ${theme === "light" ? "text-gray-500" : "text-slate-400"}`}>
                   Quick Actions
                 </h3>
                 {quickActions.map((action) => (
@@ -164,7 +193,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => router.push(action.path)}
-                    className={`w-full justify-start gap-2 border-slate-600 bg-transparent ${getQuickActionColor(action.color)}`}
+                    className={`w-full justify-start gap-2 rounded-lg border ${getQuickActionClasses(action.color)}`}
                   >
                     <action.icon className="w-4 h-4" />
                     {action.label}
@@ -172,30 +201,42 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                 ))}
               </div>
 
-              <div className="space-y-2 pt-4 border-t border-slate-600">
-                <h3 className={`text-sm font-semibold ${theme === "light" ? "text-gray-700" : "text-slate-300"}`}>
+              <div className="space-y-2 pt-4 border-t border-slate-700/60">
+                <h3 className={`text-xs uppercase tracking-[0.2em] ${theme === "light" ? "text-gray-500" : "text-slate-400"}`}>
                   Today's Focus
                 </h3>
-                <div className={`p-3 rounded-lg ${theme === "light" ? "bg-gray-50" : "bg-slate-800/50"}`}>
+                <div
+                  className={`p-3 rounded-xl border ${
+                    theme === "light"
+                      ? "bg-gray-50 border-gray-200"
+                      : "bg-slate-900/40 border-slate-700/60"
+                  }`}
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <Zap className="w-4 h-4 text-yellow-500" />
                     <span className="text-sm font-medium">Daily Goal</span>
                   </div>
-                  <div className="w-full bg-slate-600 rounded-full h-2 mb-2">
+                  <div className="w-full bg-slate-700/60 rounded-full h-2 mb-2">
                     <div
-                      className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full"
+                      className="bg-gradient-to-r from-emerald-400 to-blue-500 h-2 rounded-full"
                       style={{ width: "75%" }}
                     ></div>
                   </div>
                   <p className="text-xs text-slate-400">750 / 1000 XP</p>
                 </div>
 
-                <div className={`p-3 rounded-lg ${theme === "light" ? "bg-gray-50" : "bg-slate-800/50"}`}>
+                <div
+                  className={`p-3 rounded-xl border ${
+                    theme === "light"
+                      ? "bg-gray-50 border-gray-200"
+                      : "bg-slate-900/40 border-slate-700/60"
+                  }`}
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <Calendar className="w-4 h-4 text-orange-500" />
                     <span className="text-sm font-medium">Streak</span>
                   </div>
-                  <p className="text-lg font-bold text-orange-500">1,058 days</p>
+                  <p className="text-lg font-bold text-orange-400">1,058 days</p>
                   <p className="text-xs text-slate-400">Keep it going! 🔥</p>
                 </div>
               </div>
@@ -212,13 +253,13 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
               key={item.label}
               variant="ghost"
               size="sm"
-              className={`flex flex-col gap-1 h-auto py-2 px-1 transition-all duration-300 hover:scale-110 ${
+              className={`flex flex-col gap-1 h-auto py-2 px-1 transition-all duration-200 hover:scale-105 ${
                 currentView === item.key
                   ? theme === "wanderer"
-                    ? "text-green-400"
+                    ? "text-emerald-300"
                     : theme === "light"
-                      ? "text-green-600"
-                      : "text-blue-400"
+                      ? "text-emerald-600"
+                      : "text-blue-300"
                   : theme === "light"
                     ? "text-gray-500"
                     : "text-slate-400"
@@ -230,19 +271,18 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
             </Button>
           ))}
 
-          {/* More Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className={`flex flex-col gap-1 h-auto py-2 px-1 transition-all duration-300 hover:scale-110 ${
+                className={`flex flex-col gap-1 h-auto py-2 px-1 transition-all duration-200 hover:scale-105 ${
                   moreItems.some((item) => currentView === item.key)
                     ? theme === "wanderer"
-                      ? "text-green-400"
+                      ? "text-emerald-300"
                       : theme === "light"
-                        ? "text-green-600"
-                        : "text-blue-400"
+                        ? "text-emerald-600"
+                        : "text-blue-300"
                     : theme === "light"
                       ? "text-gray-500"
                       : "text-slate-400"
@@ -259,24 +299,24 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                 theme === "light"
                   ? "bg-white border-gray-200"
                   : theme === "wanderer"
-                    ? "bg-slate-800/95 border-green-400/30 backdrop-blur-sm"
-                    : "bg-slate-800 border-slate-700"
+                    ? "bg-slate-900/95 border-emerald-400/20 backdrop-blur-sm"
+                    : "bg-slate-900 border-slate-700"
               }`}
             >
               {moreItems.map((item) => (
                 <DropdownMenuItem
                   key={item.label}
                   onClick={() => handleNavClick(item.key)}
-                  className={`flex items-center gap-3 cursor-pointer transition-all duration-300 ${
+                  className={`flex items-center gap-3 cursor-pointer transition-all duration-200 ${
                     currentView === item.key
                       ? theme === "wanderer"
-                        ? "bg-green-400/20 text-green-400"
+                        ? "bg-emerald-400/20 text-emerald-300"
                         : theme === "light"
-                          ? "bg-green-50 text-green-700"
+                          ? "bg-emerald-50 text-emerald-700"
                           : "bg-blue-600 text-white"
                       : theme === "light"
                         ? "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                        : "text-slate-300 hover:text-white hover:bg-slate-700"
+                        : "text-slate-300 hover:text-white hover:bg-slate-800"
                   }`}
                 >
                   <item.icon className="w-4 h-4" />

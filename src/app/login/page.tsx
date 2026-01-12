@@ -11,7 +11,7 @@ import { Card, CardContent } from '@/components/ui/card'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, isLoading, isAuthenticated } = useUserStore()
+  const { login, isLoading, isAuthenticated, enableDemoMode } = useUserStore()
   
   const [formData, setFormData] = useState({
     email: '',
@@ -64,6 +64,11 @@ export default function LoginPage() {
     if (success) {
       router.push('/new-dashboard')
     }
+  }
+
+  const handleDemoMode = () => {
+    enableDemoMode()
+    router.push('/new-dashboard')
   }
 
   return (
@@ -161,6 +166,17 @@ export default function LoginPage() {
                 className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700"
               >
                 {isLoading ? 'Signing In...' : 'Sign In'}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                disabled={isLoading}
+                className="w-full"
+                onClick={handleDemoMode}
+              >
+                Try Demo Mode
               </Button>
             </form>
 

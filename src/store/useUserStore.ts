@@ -4,16 +4,41 @@ import { User, UserCourse, Achievement, StudySession } from '@/types'
 import toast from 'react-hot-toast'
 import { apiService } from '@/lib/api'
 
+const createDemoUser = (): User => ({
+  id: 'demo-user',
+  email: 'demo@wordwanderer.app',
+  username: 'demo_user',
+  displayName: 'Demo User',
+  totalXP: 1250,
+  currentStreak: 5,
+  longestStreak: 12,
+  gems: 150,
+  joinedAt: new Date(),
+  lastActiveAt: new Date(),
+  preferences: {
+    dailyGoal: 10,
+    soundEnabled: true,
+    notificationsEnabled: true,
+    theme: 'light',
+    language: 'en',
+  },
+  achievements: [],
+  courses: [],
+})
+
 interface UserState {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
+  demoMode: boolean
   currentCourse: UserCourse | null
   studySessions: StudySession[]
 
   // Actions
   setUser: (user: User) => void
   setLoading: (loading: boolean) => void
+  enableDemoMode: () => void
+  disableDemoMode: () => void
   login: (email: string, password: string) => Promise<boolean>
   register: (email: string, username: string, displayName: string, password: string) => Promise<boolean>
   logout: () => Promise<void>
@@ -32,6 +57,7 @@ export const useUserStore = create<UserState>()(
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      demoMode: false,
       currentCourse: null,
       studySessions: [],
 
@@ -39,7 +65,32 @@ export const useUserStore = create<UserState>()(
 
       setLoading: (loading) => set({ isLoading: loading }),
 
+      enableDemoMode: () => {
+        const demoUser = createDemoUser()
+        set({
+          demoMode: true,
+          user: demoUser,
+          isAuthenticated: true,
+          isLoading: false,
+          currentCourse: null,
+          studySessions: [],
+        })
+      },
+
+      disableDemoMode: () => set({
+        demoMode: false,
+        user: null,
+        isAuthenticated: false,
+        currentCourse: null,
+        studySessions: [],
+      }),
+
       login: async (email: string, password: string) => {
+        if (get().demoMode) {
+          set({ isLoading: false, isAuthenticated: true })
+          return true
+        }
+
         set({ isLoading: true })
         try {
           const data = await apiService.login(email, password)
@@ -66,6 +117,11 @@ export const useUserStore = create<UserState>()(
       },
 
       register: async (email: string, username: string, displayName: string, password: string) => {
+        if (get().demoMode) {
+          set({ isLoading: false })
+          return true
+        }
+
         set({ isLoading: true })
         try {
           const data = await apiService.register(email, username, displayName, password)
@@ -88,6 +144,18 @@ export const useUserStore = create<UserState>()(
       },
 
       logout: async () => {
+        if (get().demoMode) {
+          set({
+            demoMode: false,
+            user: null,
+            isAuthenticated: false,
+            currentCourse: null,
+            isLoading: false,
+          })
+          toast.success('Exited demo mode')
+          return
+        }
+
         set({ isLoading: true })
         try {
           await apiService.logout()
@@ -106,6 +174,16 @@ export const useUserStore = create<UserState>()(
       },
 
       checkAuth: async () => {
+        if (get().demoMode) {
+          if (!get().user) {
+            set({
+              user: createDemoUser(),
+              isAuthenticated: true
+            })
+          }
+          return
+        }
+
         try {
           const data = await apiService.getCurrentUser()
 
@@ -169,6 +247,7 @@ export const useUserStore = create<UserState>()(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        demoMode: state.demoMode,
         currentCourse: state.currentCourse,
         studySessions: state.studySessions,
       }),

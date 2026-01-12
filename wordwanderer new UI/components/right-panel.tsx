@@ -21,50 +21,85 @@ export function RightPanel({ onNavigate }: RightPanelProps) {
   const getPanelClasses = () => {
     switch (theme) {
       case "light":
-        return "w-full lg:w-80 bg-white border-l border-gray-200 shadow-sm"
+        return "w-full lg:w-80 bg-white/95 border-l border-gray-200 shadow-sm"
       case "wanderer":
-        return "w-full lg:w-80 bg-gradient-to-b from-slate-800/90 to-slate-900/90 border-l border-green-400/30 shadow-xl backdrop-blur-sm"
+        return "w-full lg:w-80 bg-gradient-to-b from-slate-900/90 via-slate-900/80 to-slate-950/90 border-l border-emerald-400/20 shadow-2xl backdrop-blur"
       default:
-        return "w-full lg:w-80 bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-600 shadow-xl"
+        return "w-full lg:w-80 bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-l border-slate-700/60 shadow-2xl"
+    }
+  }
+
+  const getTabsListClasses = () => {
+    switch (theme) {
+      case "light":
+        return "bg-gray-100 border border-gray-200"
+      case "wanderer":
+        return "bg-slate-900/60 border border-emerald-400/20"
+      default:
+        return "bg-slate-900/60 border border-slate-700/60"
+    }
+  }
+
+  const getTabsTriggerClasses = () => {
+    switch (theme) {
+      case "light":
+        return "text-xs rounded-full data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
+      case "wanderer":
+        return "text-xs rounded-full data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-100"
+      default:
+        return "text-xs rounded-full data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+    }
+  }
+
+  const getCardClasses = () => {
+    switch (theme) {
+      case "light":
+        return "bg-white border border-gray-200 shadow-sm"
+      case "wanderer":
+        return "bg-slate-900/40 border border-emerald-400/15 shadow-[0_12px_30px_-25px_rgba(0,0,0,0.8)]"
+      default:
+        return "bg-slate-900/40 border border-slate-700/60 shadow-[0_12px_30px_-25px_rgba(0,0,0,0.8)]"
     }
   }
 
   return (
     <aside className={`${getPanelClasses()} order-first lg:order-last`}>
       <div className="p-4 h-full flex flex-col">
-        {/* Collapse Toggle */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className={`font-semibold ${theme === "light" ? "text-gray-800" : "text-white"}`}>Activity Hub</h2>
+          <div>
+            <p className={`text-xs uppercase tracking-[0.25em] ${theme === "light" ? "text-gray-500" : "text-slate-400"}`}>
+              Activity Hub
+            </p>
+            <h2 className={`font-semibold ${theme === "light" ? "text-gray-800" : "text-white"}`}>Your Progress</h2>
+          </div>
           <Button variant="ghost" size="sm" onClick={() => setIsCollapsed(!isCollapsed)} className="lg:hidden">
             {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
           </Button>
         </div>
 
-        {/* Content */}
         <div className={`flex-1 ${isCollapsed ? "hidden lg:block" : ""}`}>
           <Tabs defaultValue="progress" className="h-full">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
-              <TabsTrigger value="progress" className="text-xs">
+            <TabsList className={`grid w-full grid-cols-3 mb-4 rounded-full p-1 ${getTabsListClasses()}`}>
+              <TabsTrigger value="progress" className={getTabsTriggerClasses()}>
                 <Target className="w-3 h-3 mr-1" />
                 Progress
               </TabsTrigger>
-              <TabsTrigger value="social" className="text-xs">
+              <TabsTrigger value="social" className={getTabsTriggerClasses()}>
                 <Trophy className="w-3 h-3 mr-1" />
                 League
               </TabsTrigger>
-              <TabsTrigger value="quests" className="text-xs">
+              <TabsTrigger value="quests" className={getTabsTriggerClasses()}>
                 <Calendar className="w-3 h-3 mr-1" />
                 Quests
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="progress" className="space-y-4">
-              <div className="transform hover:scale-105 transition-all duration-300">
+              <div className="transition-all duration-200 hover:translate-y-[-2px]">
                 <QuestProgress />
               </div>
 
-              {/* Today's Summary */}
-              <div className={`p-4 rounded-lg ${theme === "light" ? "bg-gray-50" : "bg-slate-800/50"}`}>
+              <div className={`p-4 rounded-2xl ${getCardClasses()}`}>
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   Today's Summary
@@ -76,7 +111,7 @@ export function RightPanel({ onNavigate }: RightPanelProps) {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className={theme === "light" ? "text-gray-600" : "text-slate-400"}>XP earned</span>
-                    <span className="font-medium text-green-500">+750</span>
+                    <span className="font-medium text-emerald-400">+750</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className={theme === "light" ? "text-gray-600" : "text-slate-400"}>Time studied</span>
@@ -87,19 +122,18 @@ export function RightPanel({ onNavigate }: RightPanelProps) {
             </TabsContent>
 
             <TabsContent value="social" className="space-y-4">
-              <div className="transform hover:scale-105 transition-all duration-300">
+              <div className="transition-all duration-200 hover:translate-y-[-2px]">
                 <LeagueInfo onViewLeague={() => onNavigate?.("leaderboards")} />
               </div>
 
-              {/* Friend Activity */}
-              <div className={`p-4 rounded-lg ${theme === "light" ? "bg-gray-50" : "bg-slate-800/50"}`}>
+              <div className={`p-4 rounded-2xl ${getCardClasses()}`}>
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
                   <Users className="w-4 h-4" />
                   Friend Activity
                 </h3>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                    <div className="w-8 h-8 bg-gradient-to-r from-emerald-400 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
                       A
                     </div>
                     <div className="flex-1">
@@ -121,13 +155,18 @@ export function RightPanel({ onNavigate }: RightPanelProps) {
             </TabsContent>
 
             <TabsContent value="quests" className="space-y-4">
-              <div className="transform hover:scale-105 transition-all duration-300">
+              <div className="transition-all duration-200 hover:translate-y-[-2px]">
                 <DailyQuests onViewAll={() => onNavigate?.("quests")} />
               </div>
 
-              {/* Weekly Challenge */}
               <div
-                className={`p-4 rounded-lg border-2 border-dashed ${theme === "light" ? "border-gray-300 bg-gray-50" : "border-slate-600 bg-slate-800/50"}`}
+                className={`p-4 rounded-2xl border-2 border-dashed ${
+                  theme === "light"
+                    ? "border-gray-200 bg-gray-50"
+                    : theme === "wanderer"
+                      ? "border-emerald-400/20 bg-slate-900/40"
+                      : "border-slate-700/60 bg-slate-900/40"
+                }`}
               >
                 <h3 className="font-semibold mb-2 flex items-center gap-2">
                   <Trophy className="w-4 h-4 text-yellow-500" />
@@ -136,7 +175,7 @@ export function RightPanel({ onNavigate }: RightPanelProps) {
                 <p className={`text-sm mb-3 ${theme === "light" ? "text-gray-600" : "text-slate-400"}`}>
                   Complete 20 lessons this week
                 </p>
-                <div className="w-full bg-slate-600 rounded-full h-2 mb-2">
+                <div className="w-full bg-slate-700/60 rounded-full h-2 mb-2">
                   <div
                     className="bg-gradient-to-r from-yellow-400 to-orange-500 h-2 rounded-full"
                     style={{ width: "60%" }}
@@ -148,8 +187,7 @@ export function RightPanel({ onNavigate }: RightPanelProps) {
           </Tabs>
         </div>
 
-        {/* Footer Links - Always at bottom */}
-        <div className="mt-4 pt-4 border-t border-slate-600">
+        <div className="mt-4 pt-4 border-t border-slate-700/60">
           <FooterLinks />
         </div>
       </div>

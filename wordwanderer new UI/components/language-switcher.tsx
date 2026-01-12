@@ -9,7 +9,7 @@ import { Globe, Star, Lock, CheckCircle } from "lucide-react"
 interface Language {
   code: string
   name: string
-  flag: string
+  flagCode: string
   progress: number
   isUnlocked: boolean
   isActive: boolean
@@ -23,12 +23,12 @@ interface LanguageSwitcherProps {
 
 export function LanguageSwitcher({ isOpen, onClose, onLanguageChange }: LanguageSwitcherProps) {
   const [languages] = useState<Language[]>([
-    { code: "zh", name: "Chinese", flag: "🇨🇳", progress: 75, isUnlocked: true, isActive: true },
-    { code: "es", name: "Spanish", flag: "🇪🇸", progress: 45, isUnlocked: true, isActive: false },
-    { code: "fr", name: "French", flag: "🇫🇷", progress: 20, isUnlocked: true, isActive: false },
-    { code: "de", name: "German", flag: "🇩🇪", progress: 0, isUnlocked: false, isActive: false },
-    { code: "ja", name: "Japanese", flag: "🇯🇵", progress: 0, isUnlocked: false, isActive: false },
-    { code: "ko", name: "Korean", flag: "🇰🇷", progress: 0, isUnlocked: false, isActive: false },
+    { code: "zh", name: "Chinese", flagCode: "cn", progress: 75, isUnlocked: true, isActive: true },
+    { code: "es", name: "Spanish", flagCode: "es", progress: 45, isUnlocked: true, isActive: false },
+    { code: "fr", name: "French", flagCode: "fr", progress: 20, isUnlocked: true, isActive: false },
+    { code: "de", name: "German", flagCode: "de", progress: 0, isUnlocked: false, isActive: false },
+    { code: "ja", name: "Japanese", flagCode: "jp", progress: 0, isUnlocked: false, isActive: false },
+    { code: "ko", name: "Korean", flagCode: "kr", progress: 0, isUnlocked: false, isActive: false },
   ])
 
   const handleLanguageSelect = (language: Language) => {
@@ -62,7 +62,11 @@ export function LanguageSwitcher({ isOpen, onClose, onLanguageChange }: Language
               onClick={() => handleLanguageSelect(language)}
             >
               <div className="flex items-center gap-3">
-                <div className="text-2xl">{language.flag}</div>
+                <img
+                  src={`https://flagcdn.com/w20/${language.flagCode}.png`}
+                  alt={`${language.name} flag`}
+                  className="h-4 w-6 rounded-sm border border-white/10"
+                />
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-white">{language.name}</h3>
