@@ -10,7 +10,7 @@
   },
   "builds": [
     {
-      "src": "wordwanderer new UI/package.json",
+      "src": "wordwanderer-new-ui/package.json",
       "use": "@vercel/next"
     }
   ],
