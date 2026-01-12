@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm --prefix backend run dev\" \"npm --prefix \\\"wordwanderer new UI\\\" run dev\"",
-    "build": "npm --prefix \"wordwanderer new UI\" run build",
-    "start": "npm --prefix \"wordwanderer new UI\" run start",
-    "lint": "npm --prefix \"wordwanderer new UI\" run lint",
-    "type-check": "npm --prefix \"wordwanderer new UI\" run type-check",
-    "dev:frontend": "npm --prefix \"wordwanderer new UI\" run dev",
+    "dev": "concurrently \"npm --prefix backend run dev\" \"npm --prefix wordwanderer-new-ui run dev\"",
+    "build": "npm --prefix wordwanderer-new-ui run build",
+    "start": "npm --prefix wordwanderer-new-ui run start",
+    "lint": "npm --prefix wordwanderer-new-ui run lint",
+    "type-check": "npm --prefix wordwanderer-new-ui run type-check",
+    "dev:frontend": "npm --prefix wordwanderer-new-ui run dev",
     "dev:backend": "npm --prefix backend run dev"
   },
   "dependencies": {
