@@ -2,17 +2,21 @@
 import { Button } from "@/components/ui/button"
 import { BookOpen, ChevronDown } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import type { Section } from "@/data/course-data"
+import type { CourseSection } from "@/types/course-path"
 
 interface LessonBannerProps {
-  section: Section
+  section: CourseSection
   currentSection: number
   onSectionChange: (sectionId: number) => void
-  availableSections: Section[]
+  availableSections: CourseSection[]
 }
 
 export function LessonBanner({ section, currentSection, onSectionChange, availableSections }: LessonBannerProps) {
   const currentUnit = section.units[0] // Show first unit of current section
+  const unitOrder = currentUnit?.order ?? 1
+  if (!currentUnit) {
+    return null
+  }
 
   return (
     <div className="bg-gradient-to-r from-yellow-400 via-yellow-300 to-orange-400 text-yellow-900 rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl border-2 border-yellow-200 relative overflow-hidden">
@@ -34,7 +38,7 @@ export function LessonBanner({ section, currentSection, onSectionChange, availab
               variant="ghost"
               className="text-xs sm:text-sm font-medium opacity-80 mb-2 p-0 h-auto hover:opacity-100 transition-opacity"
             >
-              SECTION {section.id}, UNIT {currentUnit.id}
+              SECTION {section.id}, UNIT {unitOrder}
               <ChevronDown className="w-3 h-3 ml-1" />
             </Button>
           </DropdownMenuTrigger>

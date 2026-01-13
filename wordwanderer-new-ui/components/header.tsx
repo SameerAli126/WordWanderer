@@ -1,8 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Flame, Gem, Heart, Bell, User } from "lucide-react"
+import { Flame, Gem, Heart, Bell, User, LogOut } from "lucide-react"
 import { useTheme } from "@/contexts/theme-context"
 
 interface HeaderProps {
@@ -10,11 +9,12 @@ interface HeaderProps {
   onStreakClick?: () => void
   onLanguageClick?: () => void
   onNotificationClick?: () => void
+  onLogout?: () => void
 }
 
 type StatVariant = "streak" | "gems" | "hearts"
 
-export function Header({ onProfileClick, onStreakClick, onLanguageClick, onNotificationClick }: HeaderProps) {
+export function Header({ onProfileClick, onStreakClick, onLanguageClick, onNotificationClick, onLogout }: HeaderProps) {
   const { theme } = useTheme()
 
   const getHeaderClasses = () => {
@@ -88,16 +88,6 @@ export function Header({ onProfileClick, onStreakClick, onLanguageClick, onNotif
           <div className={`text-xl sm:text-2xl font-bold ${theme === "light" ? "text-gray-800" : "text-white"}`}>
             WordWanderer
           </div>
-          <Badge
-            variant="secondary"
-            className={`text-[10px] uppercase tracking-[0.2em] ${
-              theme === "light"
-                ? "bg-gray-100 text-gray-600"
-                : "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30"
-            }`}
-          >
-            Beta
-          </Badge>
         </div>
 
         {/* Stats */}
@@ -164,6 +154,19 @@ export function Header({ onProfileClick, onStreakClick, onLanguageClick, onNotif
           >
             <User className="w-4 h-4" />
           </Button>
+
+          {onLogout && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onLogout}
+              className={`rounded-full border px-3 gap-2 ${getActionButtonClasses()}`}
+              aria-label="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden md:inline text-sm font-medium">Logout</span>
+            </Button>
+          )}
         </div>
       </div>
 

@@ -1,29 +1,149 @@
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { LessonInterface } from "@/components/lesson-interface"
-import { lessonData } from "@/data/lessons"
+import type { Lesson, LessonQuestion, LessonQuestionType } from "@/types/lesson"
+import { API_BASE_URL } from "@/lib/api"
+
+interface BackendLessonQuestion {
+  _id?: string
+  type: string
+  prompt: string
+  content?: {
+    text?: string
+    audio?: string
+    options?: string[]
+    pairs?: Array<{ left: string; right: string }>
+    items?: string[]
+  }
+  correctAnswer: string | string[] | boolean
+  explanation?: string
+}
+
+interface BackendLesson {
+  _id: string
+  title: string
+  description: string
+  xpReward: number
+  questions: BackendLessonQuestion[]
+}
+
+interface LessonResponse {
+  success: boolean
+  lesson: BackendLesson
+}
+
+const mapQuestionType = (type: string): LessonQuestionType => {
+  switch (type) {
+    case "multiple-choice":
+    case "true-false":
+      return "select"
+    case "translation":
+    case "fill-in-blank":
+    case "speaking":
+      return "translate"
+    case "listening":
+      return "audio"
+    case "matching":
+      return "match"
+    case "ordering":
+      return "ordering"
+    default:
+      return "select"
+  }
+}
+
+const normalizeCorrectAnswer = (type: string, answer: BackendLessonQuestion["correctAnswer"]) => {
+  if (type === "true-false") {
+    if (typeof answer === "boolean") {
+      return answer ? "True" : "False"
+    }
+  }
+  return answer
+}
+
+const mapLessonQuestion = (question: BackendLessonQuestion, index: number): LessonQuestion => {
+  const mappedType = mapQuestionType(question.type)
+  const correctAnswer = normalizeCorrectAnswer(question.type, question.correctAnswer)
+
+  const options =
+    question.type === "true-false"
+      ? ["True", "False"]
+      : question.content?.options ?? []
+
+  return {
+    id: question._id ?? `${index}`,
+    type: mappedType,
+    prompt: question.prompt,
+    context: question.content?.text,
+    options: options.length ? options : undefined,
+    correctAnswer: correctAnswer as string | string[],
+    explanation: question.explanation,
+    pairs: question.content?.pairs,
+    items: question.content?.items,
+    audio: question.content?.audio,
+  }
+}
+
+const mapLesson = (lesson: BackendLesson): Lesson => {
+  return {
+    id: lesson._id,
+    title: lesson.title,
+    description: lesson.description,
+    xpReward: lesson.xpReward ?? 0,
+    questions: (lesson.questions || []).map(mapLessonQuestion),
+  }
+}
 
 export default function LessonPage() {
   const params = useParams()
   const router = useRouter()
-  const lessonId = Number.parseInt(params.id as string)
-  const [lesson, setLesson] = useState(null)
+  const lessonId = params.id as string
+  const [lesson, setLesson] = useState<Lesson | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const foundLesson = lessonData.find((l) => l.id === lessonId)
-    if (foundLesson) {
-      setLesson(foundLesson)
-    } else {
-      router.push("/?view=learn")
+    let cancelled = false
+
+    const fetchLesson = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/lessons/${lessonId}`, {
+          credentials: "include",
+        })
+
+        if (response.status === 401) {
+          router.push("/login")
+          return
+        }
+
+        const data: LessonResponse & { message?: string } = await response.json()
+        if (!response.ok || data.success === false) {
+          throw new Error(data.message || "Lesson not available.")
+        }
+
+        if (!cancelled) {
+          setLesson(mapLesson(data.lesson))
+          setError(null)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Lesson not available.")
+        }
+      }
+    }
+
+    fetchLesson()
+
+    return () => {
+      cancelled = true
     }
   }, [lessonId, router])
 
   if (!lesson) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading lesson...</div>
+        <div className="text-white text-xl">{error ?? "Loading lesson..."}</div>
       </div>
     )
   }

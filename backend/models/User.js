@@ -76,6 +76,58 @@ const achievementSchema = new mongoose.Schema({
   }
 });
 
+const lessonProgressSchema = new mongoose.Schema({
+  lessonId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Lesson',
+    required: true
+  },
+  courseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course',
+    required: true
+  },
+  unitId: {
+    type: String,
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['in-progress', 'completed'],
+    default: 'completed'
+  },
+  attempts: {
+    type: Number,
+    default: 1,
+    min: 1
+  },
+  accuracy: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
+  bestAccuracy: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
+  xpEarned: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  lastAttemptAt: {
+    type: Date,
+    default: Date.now
+  },
+  completedAt: {
+    type: Date,
+    default: null
+  }
+}, { _id: false });
+
 const userCourseSchema = new mongoose.Schema({
   courseId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -196,6 +248,7 @@ const userSchema = new mongoose.Schema({
     default: () => ({})
   },
   achievements: [achievementSchema],
+  lessonProgress: [lessonProgressSchema],
   courses: [userCourseSchema],
   isEmailVerified: {
     type: Boolean,

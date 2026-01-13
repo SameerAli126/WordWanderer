@@ -4,14 +4,14 @@ import { Button } from "@/components/ui/button"
 import { Check, Lock } from "lucide-react"
 
 interface LevelButtonProps {
-  level: number
+  label: string
   completed: boolean
   locked: boolean
   current?: boolean
   onClick?: () => void
 }
 
-export function LevelButton({ level, completed, locked, current, onClick }: LevelButtonProps) {
+export function LevelButton({ label, completed, locked, current, onClick }: LevelButtonProps) {
   const getButtonStyle = () => {
     if (completed) {
       return "bg-gradient-to-br from-yellow-400 to-orange-400 hover:from-yellow-300 hover:to-orange-300 text-yellow-900 border-yellow-500 shadow-lg hover:shadow-xl"
@@ -37,7 +37,7 @@ export function LevelButton({ level, completed, locked, current, onClick }: Leve
       ) : locked ? (
         <Lock className="w-6 h-6" />
       ) : (
-        <span className="text-lg font-bold">{level}</span>
+        <span className="text-lg font-bold">{label}</span>
       )}
     </Button>
   )

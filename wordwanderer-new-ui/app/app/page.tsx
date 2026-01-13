@@ -18,6 +18,7 @@ import { AchievementToast } from "@/components/achievement-toast"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { StudyReminder } from "@/components/study-reminder"
 import { useTheme } from "@/contexts/theme-context"
+import { apiRequest } from "@/lib/api"
 
 type ViewType = "learn" | "leaderboards" | "profile" | "characters" | "quests" | "shop" | "settings"
 
@@ -71,6 +72,16 @@ export default function DuolingoApp() {
     // Here you would implement language switching logic
   }
 
+  const handleLogout = async () => {
+    try {
+      await apiRequest("/api/auth/logout", { method: "POST" })
+    } catch (error) {
+      console.error("Logout failed:", error)
+    } finally {
+      router.push("/login")
+    }
+  }
+
   const getMainClasses = () => {
     switch (theme) {
       case "light":
@@ -93,6 +104,7 @@ export default function DuolingoApp() {
           <Profile
             onViewAllFriends={() => router.push("/all-friends")}
             onViewAllAchievements={() => router.push("/all-achievements")}
+            onLogout={handleLogout}
           />
         )
       case "characters":
@@ -129,6 +141,7 @@ export default function DuolingoApp() {
         onStreakClick={() => setShowStreakFreeze(true)}
         onLanguageClick={() => setShowLanguageSwitcher(true)}
         onNotificationClick={() => setShowStudyReminder(true)}
+        onLogout={handleLogout}
       />
       <div className="flex flex-col lg:flex-row">
         <Sidebar currentView={currentView} onViewChange={handleViewChange} />

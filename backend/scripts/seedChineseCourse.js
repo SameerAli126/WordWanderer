@@ -18,6 +18,12 @@ const seedChineseCourse = async () => {
   try {
     console.log('Starting Chinese course seeding...');
 
+    const existingCourse = await Course.findOne({ title: 'Chinese for Beginners' });
+    if (existingCourse) {
+      console.log('Chinese course already exists. Skipping seeding.');
+      return;
+    }
+
     // Get admin user
     let adminUser = await User.findOne({ email: 'admin@wordwanderer.com' });
     if (!adminUser) {

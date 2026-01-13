@@ -1,25 +1,92 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { LessonBanner } from "./lesson-banner"
 import { LevelButton } from "./level-button"
 import { CharacterIllustration } from "./character-illustration"
 import { PlanActivities } from "./plan-activities"
-import { courseData, type Level } from "@/data/course-data"
+import type { CourseSection, LessonLevel } from "@/types/course-path"
+import { API_BASE_URL } from "@/lib/api"
+
+interface ProgressPathResponse {
+  success: boolean
+  sections: CourseSection[]
+}
 
 export function LessonPath() {
-  const [currentSection, setCurrentSection] = useState(1)
+  const router = useRouter()
+  const [sections, setSections] = useState<CourseSection[]>([])
+  const [currentSection, setCurrentSection] = useState<number>(1)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const section = courseData.find((s) => s.id === currentSection)
-  if (!section) return null
+  useEffect(() => {
+    let cancelled = false
 
-  // Flatten all levels from all units in current section
-  const allLevels: (Level & { unitTitle: string })[] = []
-  section.units.forEach((unit) => {
-    unit.levels.forEach((level) => {
-      allLevels.push({ ...level, unitTitle: unit.title })
+    const fetchPath = async () => {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/progress/path`, {
+          credentials: "include",
+        })
+
+        if (response.status === 401) {
+          router.push("/login")
+          return
+        }
+
+        const data: ProgressPathResponse & { message?: string } = await response.json()
+        if (!response.ok || data.success === false) {
+          throw new Error(data.message || "Unable to load your lesson path yet.")
+        }
+
+        if (cancelled) {
+          return
+        }
+
+        const nextSections = data.sections ?? []
+        setSections(nextSections)
+        setCurrentSection(nextSections[0]?.id ?? 1)
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Unable to load your lesson path yet.")
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    fetchPath()
+
+    return () => {
+      cancelled = true
+    }
+  }, [router])
+
+  const section = sections.find((s) => s.id === currentSection) ?? sections[0]
+
+  const allLevels = useMemo(() => {
+    if (!section) {
+      return [] as (LessonLevel & { unitTitle: string; unitOrder: number })[]
+    }
+
+    const levels: (LessonLevel & { unitTitle: string; unitOrder: number })[] = []
+    section.units.forEach((unit) => {
+      unit.levels.forEach((level) => {
+        levels.push({
+          ...level,
+          unitTitle: unit.title,
+          unitOrder: unit.order,
+        })
+      })
     })
-  })
+    return levels
+  }, [section])
 
   const getPositionClass = (index: number) => {
     // Dragon's tail pattern - snake down the center with slight offsets
@@ -70,6 +137,10 @@ export function LessonPath() {
   }
 
   const getUnitHeader = (index: number) => {
+    if (!section) {
+      return null
+    }
+
     // Find which unit this level belongs to
     let levelCount = 0
     for (const unit of section.units) {
@@ -77,7 +148,7 @@ export function LessonPath() {
         return (
           <div className="mb-8 text-center">
             <div className="inline-block bg-slate-700 rounded-full px-4 py-2 mb-2">
-              <span className="text-slate-300 text-sm font-medium">UNIT {unit.id}</span>
+              <span className="text-slate-300 text-sm font-medium">UNIT {unit.order}</span>
             </div>
             <h3 className="text-white text-lg font-bold">{unit.title}</h3>
             <p className="text-slate-400 text-sm">{unit.description}</p>
@@ -92,12 +163,20 @@ export function LessonPath() {
 
   return (
     <div className="max-w-4xl mx-auto pb-20 lg:pb-6">
-      <LessonBanner
-        section={section}
-        currentSection={currentSection}
-        onSectionChange={setCurrentSection}
-        availableSections={courseData}
-      />
+      {isLoading ? (
+        <div className="rounded-xl bg-slate-800/60 border border-slate-700 p-6 text-slate-200">
+          Loading your learning path...
+        </div>
+      ) : error ? (
+        <div className="rounded-xl bg-red-500/10 border border-red-500/50 p-6 text-red-200">{error}</div>
+      ) : section ? (
+        <LessonBanner
+          section={section}
+          currentSection={currentSection}
+          onSectionChange={setCurrentSection}
+          availableSections={sections}
+        />
+      ) : null}
 
       <div className="relative mt-8 sm:mt-12">
         <div className="flex flex-col items-center space-y-8 sm:space-y-12">
@@ -107,7 +186,7 @@ export function LessonPath() {
 
               <div className={`relative ${getPositionClass(index)}`}>
                 <LevelButton
-                  level={level.id}
+                  label={String(level.order)}
                   completed={level.completed}
                   locked={level.locked}
                   current={level.current}
