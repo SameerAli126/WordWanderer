@@ -18,7 +18,7 @@ import { AchievementToast } from "@/components/achievement-toast"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { StudyReminder } from "@/components/study-reminder"
 import { useTheme } from "@/contexts/theme-context"
-import { apiRequest } from "@/lib/api"
+import { apiRequest, clearStoredToken } from "@/lib/api"
 
 type ViewType = "learn" | "leaderboards" | "profile" | "characters" | "quests" | "shop" | "settings"
 
@@ -78,6 +78,7 @@ export default function DuolingoApp() {
     } catch (error) {
       console.error("Logout failed:", error)
     } finally {
+      clearStoredToken()
       router.push("/login")
     }
   }

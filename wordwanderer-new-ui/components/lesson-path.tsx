@@ -7,7 +7,7 @@ import { LevelButton } from "./level-button"
 import { CharacterIllustration } from "./character-illustration"
 import { PlanActivities } from "./plan-activities"
 import type { CourseSection, LessonLevel } from "@/types/course-path"
-import { API_BASE_URL } from "@/lib/api"
+import { apiRequest } from "@/lib/api"
 
 interface ProgressPathResponse {
   success: boolean
@@ -29,19 +29,7 @@ export function LessonPath() {
       setError(null)
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/progress/path`, {
-          credentials: "include",
-        })
-
-        if (response.status === 401) {
-          router.push("/login")
-          return
-        }
-
-        const data: ProgressPathResponse & { message?: string } = await response.json()
-        if (!response.ok || data.success === false) {
-          throw new Error(data.message || "Unable to load your lesson path yet.")
-        }
+        const data = await apiRequest<ProgressPathResponse>("/api/progress/path")
 
         if (cancelled) {
           return
@@ -51,9 +39,15 @@ export function LessonPath() {
         setSections(nextSections)
         setCurrentSection(nextSections[0]?.id ?? 1)
       } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Unable to load your lesson path yet.")
+        if (cancelled) {
+          return
         }
+        const status = (err as Error & { status?: number }).status
+        if (status === 401) {
+          router.push("/login")
+          return
+        }
+        setError(err instanceof Error ? err.message : "Unable to load your lesson path yet.")
       } finally {
         if (!cancelled) {
           setIsLoading(false)

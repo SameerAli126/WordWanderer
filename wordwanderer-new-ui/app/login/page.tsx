@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { setStoredToken } from "@/lib/api"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
@@ -41,6 +42,10 @@ export default function LoginPage() {
 
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Login failed")
+      }
+
+      if (data.token) {
+        setStoredToken(data.token)
       }
 
       router.push("/app")

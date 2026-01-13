@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { LessonInterface } from "@/components/lesson-interface"
 import type { Lesson, LessonQuestion, LessonQuestionType } from "@/types/lesson"
-import { API_BASE_URL } from "@/lib/api"
+import { apiRequest } from "@/lib/api"
 
 interface BackendLessonQuestion {
   _id?: string
@@ -108,28 +108,22 @@ export default function LessonPage() {
 
     const fetchLesson = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/lessons/${lessonId}`, {
-          credentials: "include",
-        })
-
-        if (response.status === 401) {
-          router.push("/login")
-          return
-        }
-
-        const data: LessonResponse & { message?: string } = await response.json()
-        if (!response.ok || data.success === false) {
-          throw new Error(data.message || "Lesson not available.")
-        }
+        const data = await apiRequest<LessonResponse>(`/api/lessons/${lessonId}`)
 
         if (!cancelled) {
           setLesson(mapLesson(data.lesson))
           setError(null)
         }
       } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Lesson not available.")
+        if (cancelled) {
+          return
         }
+        const status = (err as Error & { status?: number }).status
+        if (status === 401) {
+          router.push("/login")
+          return
+        }
+        setError(err instanceof Error ? err.message : "Lesson not available.")
       }
     }
 
