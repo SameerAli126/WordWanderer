@@ -24,6 +24,18 @@ interface UserProfile {
   currentStreak: number
   longestStreak: number
   joinedAt?: string
+  achievements?: Array<{
+    id: string
+    title: string
+    description: string
+    icon?: string
+    category?: string
+    rarity?: string
+    xpReward?: number
+    unlockedAt?: string | null
+    progress?: number
+    maxProgress?: number
+  }>
 }
 
 interface ProfileResponse {
@@ -91,7 +103,7 @@ export function Profile({ onViewAllFriends, onViewAllAchievements, onLogout }: P
         <ProfileStats stats={stats} isLoading={isLoading} />
         {error && <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-red-200">{error}</div>}
         <FriendSuggestions onViewAll={onViewAllFriends} />
-        <Achievements onViewAll={onViewAllAchievements} />
+        <Achievements achievements={user?.achievements ?? []} onViewAll={onViewAllAchievements} />
       </div>
       <ProfileSidebar />
     </div>

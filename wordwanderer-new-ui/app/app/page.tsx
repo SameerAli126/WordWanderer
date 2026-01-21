@@ -18,7 +18,7 @@ import { AchievementToast } from "@/components/achievement-toast"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { StudyReminder } from "@/components/study-reminder"
 import { useTheme } from "@/contexts/theme-context"
-import { apiRequest, clearStoredToken } from "@/lib/api"
+import { apiRequest, clearStoredToken, BALANCE_EVENT_NAME, BalanceUpdate } from "@/lib/api"
 
 type ViewType = "learn" | "leaderboards" | "profile" | "characters" | "quests" | "shop" | "settings"
 
@@ -30,6 +30,12 @@ export default function DuolingoApp() {
   const [showLanguageSwitcher, setShowLanguageSwitcher] = useState(false)
   const [showStudyReminder, setShowStudyReminder] = useState(false)
   const [achievement, setAchievement] = useState<any>(null)
+  const [userStats, setUserStats] = useState({
+    currentStreak: 0,
+    gems: 0,
+    hearts: 0,
+    maxHearts: 5,
+  })
   const { theme } = useTheme()
 
   useEffect(() => {
@@ -39,21 +45,67 @@ export default function DuolingoApp() {
     }
   }, [searchParams])
 
-  // Simulate achievement unlock
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (Math.random() > 0.7) {
-        // 30% chance
-        setAchievement({
-          id: "first_lesson",
-          title: "First Steps",
-          description: "Complete your first lesson",
-          icon: "🏆",
-          xpReward: 50,
-        })
+  const loadUserStats = async () => {
+    try {
+      const response = await apiRequest<{ user: { currentStreak: number; gems: number; hearts: number; maxHearts?: number } }>(
+        "/api/auth/me"
+      )
+      setUserStats({
+        currentStreak: response.user.currentStreak ?? 0,
+        gems: response.user.gems ?? 0,
+        hearts: response.user.hearts ?? 0,
+        maxHearts: response.user.maxHearts ?? 5,
+      })
+    } catch (error) {
+      const status = error instanceof Error ? (error as Error & { status?: number }).status : undefined
+      if (status === 401) {
+        clearStoredToken()
+        router.push("/login")
+      } else {
+        console.error("Failed to load user stats:", error)
       }
-    }, 5000)
-    return () => clearTimeout(timer)
+    }
+  }
+
+  useEffect(() => {
+    void loadUserStats()
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<BalanceUpdate>).detail
+      if (detail && typeof detail === "object") {
+        setUserStats((prev) => ({
+          ...prev,
+          ...detail,
+        }))
+        return
+      }
+      void loadUserStats()
+    }
+
+    window.addEventListener(BALANCE_EVENT_NAME, handler)
+    return () => window.removeEventListener(BALANCE_EVENT_NAME, handler)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    const stored = window.sessionStorage.getItem("ww-last-achievement")
+    if (!stored) {
+      return
+    }
+    try {
+      const parsed = JSON.parse(stored)
+      setAchievement(parsed)
+    } catch (error) {
+      console.error("Failed to parse achievement:", error)
+    }
+    window.sessionStorage.removeItem("ww-last-achievement")
   }, [])
 
   const handleViewChange = (view: ViewType) => {
@@ -143,6 +195,7 @@ export default function DuolingoApp() {
         onLanguageClick={() => setShowLanguageSwitcher(true)}
         onNotificationClick={() => setShowStudyReminder(true)}
         onLogout={handleLogout}
+        stats={userStats}
       />
       <div className="flex flex-col lg:flex-row">
         <Sidebar currentView={currentView} onViewChange={handleViewChange} />
@@ -154,8 +207,8 @@ export default function DuolingoApp() {
       <StreakFreezeModal
         isOpen={showStreakFreeze}
         onClose={() => setShowStreakFreeze(false)}
-        currentStreak={1058}
-        gems={10866}
+        currentStreak={userStats.currentStreak}
+        gems={userStats.gems}
       />
 
       <LanguageSwitcher

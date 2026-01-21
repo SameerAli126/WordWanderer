@@ -14,13 +14,104 @@ const connectDB = async () => {
   }
 };
 
+const speakingTemplates = {
+  'Basic Greetings': {
+    prompt: 'Say this greeting aloud:',
+    text: 'ni3 hao3',
+    expected: 'ni3 hao3',
+    explanation: 'Practice saying hello in Mandarin using tone numbers.',
+    hints: ['Say "nee how" with tones: ni3 hao3.'],
+    xpReward: 20,
+    difficulty: 'easy'
+  },
+  'Time of Day Greetings': {
+    prompt: 'Say the morning greeting:',
+    text: 'zao3 shang4 hao3',
+    expected: 'zao3 shang4 hao3',
+    explanation: 'Use the morning greeting with tone numbers.',
+    hints: ['Focus on zao3 shang4 hao3.'],
+    xpReward: 20,
+    difficulty: 'easy'
+  },
+  'Numbers 1-10': {
+    prompt: 'Say the numbers 1 to 4:',
+    text: 'yi1 er4 san1 si4',
+    expected: 'yi1 er4 san1 si4',
+    explanation: 'Practice the first four numbers with tone numbers.',
+    hints: ['Say yi1 er4 san1 si4 clearly.'],
+    xpReward: 20,
+    difficulty: 'easy'
+  },
+  'Telling Time': {
+    prompt: 'Ask "What time is it?" aloud:',
+    text: 'xian4 zai4 ji3 dian3',
+    expected: 'xian4 zai4 ji3 dian3',
+    explanation: 'Practice the time question in Mandarin.',
+    hints: ['Say xian4 zai4 ji3 dian3.'],
+    xpReward: 25,
+    difficulty: 'medium'
+  },
+  'Family Members': {
+    prompt: 'Say "mother" aloud:',
+    text: 'ma1 ma',
+    expected: 'ma1 ma',
+    explanation: 'Practice the word for mother in Mandarin.',
+    hints: ['Say ma1 ma with a steady first tone.'],
+    xpReward: 20,
+    difficulty: 'easy'
+  }
+};
+
+const buildSpeakingQuestion = (template, order = 0) => ({
+  type: 'speaking',
+  prompt: template.prompt,
+  content: {
+    text: template.text
+  },
+  correctAnswer: template.expected,
+  explanation: template.explanation,
+  hints: template.hints || [],
+  xpReward: template.xpReward || 20,
+  difficulty: template.difficulty || 'medium',
+  order
+});
+
+const ensureSpeakingQuestions = async (courseId) => {
+  const lessons = await Lesson.find({ courseId, isPublished: true });
+  let updatedCount = 0;
+
+  for (const lesson of lessons) {
+    const template = speakingTemplates[lesson.title];
+    if (!template) {
+      continue;
+    }
+
+    const hasSpeech = (lesson.questions || []).some((question) => question.type === 'speaking');
+    if (hasSpeech) {
+      continue;
+    }
+
+    const speakingQuestion = buildSpeakingQuestion(template);
+    lesson.questions.unshift(speakingQuestion);
+    await lesson.save();
+    updatedCount += 1;
+  }
+
+  return updatedCount;
+};
+
 const seedChineseCourse = async () => {
   try {
     console.log('Starting Chinese course seeding...');
 
     const existingCourse = await Course.findOne({ title: 'Chinese for Beginners' });
     if (existingCourse) {
-      console.log('Chinese course already exists. Skipping seeding.');
+      const updated = await ensureSpeakingQuestions(existingCourse._id);
+      if (updated > 0) {
+        console.log(`Added speaking questions to ${updated} lessons.`);
+      } else {
+        console.log('Chinese course already exists. No speaking updates needed.');
+      }
       return;
     }
 
@@ -376,6 +467,19 @@ const seedChineseCourse = async () => {
         ]
       }
     ];
+
+    // Ensure speaking questions are prominent in each lesson
+    chineseLessons.forEach((lesson) => {
+      const template = speakingTemplates[lesson.title];
+      if (!template) {
+        return;
+      }
+      const hasSpeech = (lesson.questions || []).some((question) => question.type === 'speaking');
+      if (hasSpeech) {
+        return;
+      }
+      lesson.questions.unshift(buildSpeakingQuestion(template));
+    });
 
     // Create lessons
     const createdLessons = await Lesson.insertMany(chineseLessons);

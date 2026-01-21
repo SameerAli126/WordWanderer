@@ -8,6 +8,7 @@ import { CharacterIllustration } from "./character-illustration"
 import { PlanActivities } from "./plan-activities"
 import type { CourseSection, LessonLevel } from "@/types/course-path"
 import { apiRequest } from "@/lib/api"
+import { Button } from "@/components/ui/button"
 
 interface ProgressPathResponse {
   success: boolean
@@ -20,6 +21,7 @@ export function LessonPath() {
   const [currentSection, setCurrentSection] = useState<number>(1)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [dueReviews, setDueReviews] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -38,6 +40,14 @@ export function LessonPath() {
         const nextSections = data.sections ?? []
         setSections(nextSections)
         setCurrentSection(nextSections[0]?.id ?? 1)
+        try {
+          const reviewResponse = await apiRequest<{ totalDue: number }>("/api/progress/review-queue?limit=1")
+          if (!cancelled) {
+            setDueReviews(reviewResponse.totalDue ?? 0)
+          }
+        } catch (reviewError) {
+          console.error("Failed to load review count:", reviewError)
+        }
       } catch (err) {
         if (cancelled) {
           return
@@ -157,6 +167,17 @@ export function LessonPath() {
 
   return (
     <div className="max-w-4xl mx-auto pb-20 lg:pb-6">
+      {dueReviews > 0 && (
+        <div className="mb-6 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-emerald-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <div className="text-sm uppercase tracking-[0.2em] text-emerald-200">Review Ready</div>
+            <div className="text-lg font-semibold">You have {dueReviews} items to review.</div>
+          </div>
+          <Button onClick={() => router.push("/review")} className="bg-emerald-400 text-slate-900 hover:bg-emerald-300">
+            Start review
+          </Button>
+        </div>
+      )}
       {isLoading ? (
         <div className="rounded-xl bg-slate-800/60 border border-slate-700 p-6 text-slate-200">
           Loading your learning path...

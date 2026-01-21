@@ -83,6 +83,8 @@ const mapLessonQuestion = (question: BackendLessonQuestion, index: number): Less
     pairs: question.content?.pairs,
     items: question.content?.items,
     audio: question.content?.audio,
+    isSpeech: question.type === "speaking",
+    speechExpected: typeof correctAnswer === "string" ? correctAnswer : Array.isArray(correctAnswer) ? correctAnswer[0] : undefined,
   }
 }
 

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Snowflake, Gem, Shield, Clock } from "lucide-react"
+import { apiRequest, emitBalanceUpdate } from "@/lib/api"
 
 interface StreakFreezeModalProps {
   isOpen: boolean
@@ -14,14 +15,23 @@ interface StreakFreezeModalProps {
 
 export function StreakFreezeModal({ isOpen, onClose, currentStreak, gems }: StreakFreezeModalProps) {
   const [isProcessing, setIsProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const freezeCost = 200
 
   const handlePurchase = async () => {
     setIsProcessing(true)
-    // Simulate purchase process
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setIsProcessing(false)
-    onClose()
+    setError(null)
+    try {
+      const response = await apiRequest<{ gems: number; streakFreezes: number }>("/api/users/streak-freeze/purchase", {
+        method: "POST",
+      })
+      emitBalanceUpdate({ gems: response.gems })
+      setIsProcessing(false)
+      onClose()
+    } catch (purchaseError) {
+      setError(purchaseError instanceof Error ? purchaseError.message : "Unable to purchase streak freeze.")
+      setIsProcessing(false)
+    }
   }
 
   return (
@@ -107,6 +117,7 @@ export function StreakFreezeModal({ isOpen, onClose, currentStreak, gems }: Stre
           {gems < freezeCost && (
             <p className="text-sm text-red-400 text-center">Not enough gems. Complete more lessons to earn gems!</p>
           )}
+          {error && <p className="text-sm text-red-400 text-center">{error}</p>}
         </div>
       </DialogContent>
     </Dialog>

@@ -14,6 +14,7 @@ const userRoutes = require('./routes/users');
 const courseRoutes = require('./routes/courses');
 const lessonRoutes = require('./routes/lessons');
 const progressRoutes = require('./routes/progress');
+const speechRoutes = require('./routes/speech');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -120,6 +121,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/lessons', lessonRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/api/speech', speechRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

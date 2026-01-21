@@ -15,6 +15,7 @@ import {
   Gamepad2,
   BarChart3,
   BookOpen,
+  CheckCircle,
   Mic,
   Zap,
   Calendar,
@@ -33,6 +34,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
 
   const navigationItems = [
     { icon: Home, label: "LEARN", key: "learn" as const },
+    { icon: CheckCircle, label: "REVIEW", path: "/review" },
     { icon: Users, label: "CHARACTERS", key: "characters" as const },
     { icon: Trophy, label: "LEADERBOARDS", key: "leaderboards" as const },
     { icon: Map, label: "QUESTS", key: "quests" as const },
@@ -48,17 +50,14 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     { icon: Mic, label: "Voice", path: "/voice", color: "red" },
   ]
 
-  const handleNavClick = (key: string) => {
-    if (
-      key === "learn" ||
-      key === "leaderboards" ||
-      key === "profile" ||
-      key === "characters" ||
-      key === "quests" ||
-      key === "shop" ||
-      key === "settings"
-    ) {
-      onViewChange(key)
+  const handleNavClick = (item: (typeof navigationItems)[number]) => {
+    if (item.path) {
+      router.push(item.path)
+      return
+    }
+
+    if (item.key) {
+      onViewChange(item.key)
     }
   }
 
@@ -171,9 +170,9 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                     key={item.label}
                     variant="ghost"
                     className={`w-full justify-start gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 border border-transparent ${
-                      currentView === item.key ? "" : "hover:translate-x-0.5"
-                    } ${getButtonClasses(currentView === item.key)}`}
-                    onClick={() => handleNavClick(item.key)}
+                      item.key && currentView === item.key ? "" : "hover:translate-x-0.5"
+                    } ${getButtonClasses(item.key ? currentView === item.key : false)}`}
+                    onClick={() => handleNavClick(item)}
                   >
                     <item.icon className="w-5 h-5" />
                     {item.label}
@@ -254,7 +253,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
               variant="ghost"
               size="sm"
               className={`flex flex-col gap-1 h-auto py-2 px-1 transition-all duration-200 hover:scale-105 ${
-                currentView === item.key
+                item.key && currentView === item.key
                   ? theme === "wanderer"
                     ? "text-emerald-300"
                     : theme === "light"
@@ -264,7 +263,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                     ? "text-gray-500"
                     : "text-slate-400"
               }`}
-              onClick={() => handleNavClick(item.key)}
+              onClick={() => handleNavClick(item)}
             >
               <item.icon className="w-4 h-4" />
               <span className="text-xs">{item.label.slice(0, 4)}</span>
@@ -306,9 +305,9 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
               {moreItems.map((item) => (
                 <DropdownMenuItem
                   key={item.label}
-                  onClick={() => handleNavClick(item.key)}
+                  onClick={() => handleNavClick(item)}
                   className={`flex items-center gap-3 cursor-pointer transition-all duration-200 ${
-                    currentView === item.key
+                    item.key && currentView === item.key
                       ? theme === "wanderer"
                         ? "bg-emerald-400/20 text-emerald-300"
                         : theme === "light"

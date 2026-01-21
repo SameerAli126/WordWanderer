@@ -62,6 +62,10 @@ const achievementSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  gemReward: {
+    type: Number,
+    default: 0
+  },
   unlockedAt: {
     type: Date,
     default: null
@@ -125,6 +129,96 @@ const lessonProgressSchema = new mongoose.Schema({
   completedAt: {
     type: Date,
     default: null
+  }
+}, { _id: false });
+
+const practiceSessionSchema = new mongoose.Schema({
+  practiceType: {
+    type: String,
+    enum: ['hanzi', 'pinyin'],
+    required: true
+  },
+  mode: {
+    type: String,
+    required: true
+  },
+  totalExercises: {
+    type: Number,
+    default: 0
+  },
+  correctAnswers: {
+    type: Number,
+    default: 0
+  },
+  accuracy: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
+  timeSpent: {
+    type: Number,
+    default: 0
+  },
+  completedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, { _id: false });
+
+const reviewItemSchema = new mongoose.Schema({
+  itemId: {
+    type: String,
+    required: true
+  },
+  lessonId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Lesson',
+    required: true
+  },
+  prompt: {
+    type: String,
+    required: true
+  },
+  correctAnswer: {
+    type: String,
+    required: true
+  },
+  userAnswer: {
+    type: String,
+    default: null
+  },
+  type: {
+    type: String,
+    default: 'text'
+  },
+  ease: {
+    type: Number,
+    default: 2.5,
+    min: 1.3
+  },
+  intervalDays: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  repetitions: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  nextReviewAt: {
+    type: Date,
+    default: Date.now
+  },
+  lastReviewedAt: {
+    type: Date,
+    default: null
+  },
+  lastResult: {
+    type: String,
+    enum: ['correct', 'incorrect'],
+    default: 'incorrect'
   }
 }, { _id: false });
 
@@ -229,6 +323,39 @@ const userSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  gems: {
+    type: Number,
+    default: 1000,
+    min: 0
+  },
+  hearts: {
+    type: Number,
+    default: 5,
+    min: 0
+  },
+  heartsUpdatedAt: {
+    type: Date,
+    default: Date.now
+  },
+  maxHearts: {
+    type: Number,
+    default: 5,
+    min: 1
+  },
+  dailyLessonCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  dailyLessonDate: {
+    type: Date,
+    default: null
+  },
+  streakFreezes: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   currentStreak: {
     type: Number,
     default: 0,
@@ -249,6 +376,8 @@ const userSchema = new mongoose.Schema({
   },
   achievements: [achievementSchema],
   lessonProgress: [lessonProgressSchema],
+  practiceSessions: [practiceSessionSchema],
+  reviewItems: [reviewItemSchema],
   courses: [userCourseSchema],
   isEmailVerified: {
     type: Boolean,
@@ -341,9 +470,14 @@ userSchema.methods.updateStreak = function() {
       this.currentStreak += 1;
       this.lastStreakDate = today;
     } else if (daysDiff > 1) {
-      // Streak broken
-      this.currentStreak = 1;
-      this.lastStreakDate = today;
+      // Streak broken unless a freeze is available for one missed day
+      if (daysDiff === 2 && this.streakFreezes > 0) {
+        this.streakFreezes -= 1;
+        this.lastStreakDate = today;
+      } else {
+        this.currentStreak = 1;
+        this.lastStreakDate = today;
+      }
     }
     // If daysDiff === 0, same day, no change needed
   }

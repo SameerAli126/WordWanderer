@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { X, Volume2, CheckCircle, XCircle, RotateCcw } from "lucide-react"
 import { hanziCharacters, type HanziCharacter } from "@/data/hanzi-data"
+import { apiRequest } from "@/lib/api"
 
 export function HanziPractice() {
   const router = useRouter()
@@ -20,6 +21,10 @@ export function HanziPractice() {
   const [options, setOptions] = useState<string[]>([])
   const [strokeIndex, setStrokeIndex] = useState(0)
   const [showStrokes, setShowStrokes] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState("")
+  const startTimeRef = useRef(Date.now())
+  const correctCountRef = useRef(0)
 
   const totalExercises = 10
 
@@ -29,7 +34,6 @@ export function HanziPractice() {
 
   const loadNextExercise = () => {
     if (currentIndex >= totalExercises) {
-      router.push("/?view=characters")
       return
     }
 
@@ -78,18 +82,57 @@ export function HanziPractice() {
     setShowResult(true)
 
     if (correct) {
-      setScore(score + 1)
+      correctCountRef.current += 1
+      setScore((prev) => prev + 1)
     }
   }
 
-  const handleNext = () => {
-    setCurrentIndex(currentIndex + 1)
+  const recordPractice = async () => {
+    if (isSubmitting) {
+      return
+    }
+
+    setIsSubmitting(true)
+    setSubmitError("")
+
+    try {
+      const total = totalExercises
+      const correctAnswers = correctCountRef.current
+      const accuracy = total ? Math.round((correctAnswers / total) * 100) : 0
+      const timeSpent = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000))
+
+      await apiRequest("/api/progress/practice-complete", {
+        method: "POST",
+        body: JSON.stringify({
+          practiceType: "hanzi",
+          mode: practiceMode,
+          totalExercises: total,
+          correctAnswers,
+          accuracy,
+          timeSpent,
+        }),
+      })
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to save practice progress.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleNext = async () => {
+    if (currentIndex >= totalExercises - 1) {
+      await recordPractice()
+      router.push("/app?view=characters")
+      return
+    }
+
+    setCurrentIndex((prev) => prev + 1)
     setSelectedAnswer("")
     setShowResult(false)
   }
 
   const handleExit = () => {
-    router.push("/?view=characters")
+    router.push("/app?view=characters")
   }
 
   const showStrokeOrder = () => {
@@ -287,9 +330,16 @@ export function HanziPractice() {
                   CHECK
                 </Button>
               ) : (
-                <Button onClick={handleNext} className="px-8 py-3 bg-green-600 hover:bg-green-700">
-                  {currentIndex < totalExercises - 1 ? "CONTINUE" : "FINISH"}
-                </Button>
+                <div className="flex flex-col items-center gap-3">
+                  {submitError && (
+                    <div className="text-sm text-red-300 border border-red-500/40 rounded-lg px-4 py-2">
+                      {submitError}
+                    </div>
+                  )}
+                  <Button onClick={handleNext} className="px-8 py-3 bg-green-600 hover:bg-green-700" disabled={isSubmitting}>
+                    {currentIndex < totalExercises - 1 ? "CONTINUE" : isSubmitting ? "SAVING..." : "FINISH"}
+                  </Button>
+                </div>
               )}
             </div>
           </CardContent>

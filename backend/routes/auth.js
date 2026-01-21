@@ -7,6 +7,11 @@ const { auth } = require('../middleware/auth');
 
 const router = express.Router();
 
+const DEFAULT_GEMS = 1000;
+const DEFAULT_MAX_HEARTS = 5;
+const HEART_REGEN_MINUTES = 10;
+const HEART_REGEN_MS = HEART_REGEN_MINUTES * 60 * 1000;
+
 // Demo user for fallback mode
 const demoUser = {
   _id: 'demo-user-id',
@@ -16,8 +21,11 @@ const demoUser = {
   totalXP: 1250,
   currentStreak: 5,
   longestStreak: 12,
-  gems: 150,
-  hearts: 5,
+  gems: DEFAULT_GEMS,
+  hearts: DEFAULT_MAX_HEARTS,
+  maxHearts: DEFAULT_MAX_HEARTS,
+  heartsUpdatedAt: new Date(),
+  streakFreezes: 0,
   achievements: ['first_lesson', 'daily_login', 'week_streak'],
   currentLanguage: 'chinese',
   level: 8,
@@ -50,6 +58,81 @@ const generateToken = (userId) => {
 
 const generateRecoveryCode = () => {
   return `${Math.floor(100000000 + Math.random() * 900000000)}`;
+};
+
+const applyHeartRegen = (user) => {
+  if (!user.heartsUpdatedAt) {
+    user.heartsUpdatedAt = new Date();
+  }
+  if (user.hearts >= user.maxHearts) {
+    user.heartsUpdatedAt = new Date();
+    return false;
+  }
+
+  const now = Date.now();
+  const lastUpdate = new Date(user.heartsUpdatedAt).getTime();
+  const elapsed = now - lastUpdate;
+  if (elapsed < HEART_REGEN_MS) {
+    return false;
+  }
+
+  const heartsToAdd = Math.floor(elapsed / HEART_REGEN_MS);
+  if (heartsToAdd <= 0) {
+    return false;
+  }
+
+  user.hearts = Math.min(user.maxHearts, user.hearts + heartsToAdd);
+  user.heartsUpdatedAt = new Date(lastUpdate + heartsToAdd * HEART_REGEN_MS);
+  return true;
+};
+
+const getHeartRegenInfo = (user) => {
+  if (user.hearts >= user.maxHearts) {
+    return { nextInSeconds: 0, fullInSeconds: 0 };
+  }
+
+  const now = Date.now();
+  const lastUpdate = user.heartsUpdatedAt ? new Date(user.heartsUpdatedAt).getTime() : now;
+  const elapsed = now - lastUpdate;
+  const nextIn = Math.max(0, HEART_REGEN_MS - elapsed);
+  const heartsMissing = user.maxHearts - user.hearts;
+  const fullIn = nextIn + Math.max(0, heartsMissing - 1) * HEART_REGEN_MS;
+  return {
+    nextInSeconds: Math.ceil(nextIn / 1000),
+    fullInSeconds: Math.ceil(fullIn / 1000),
+  };
+};
+
+const ensureUserEconomy = async (user) => {
+  let changed = false;
+  if (typeof user.gems !== 'number') {
+    user.gems = DEFAULT_GEMS;
+    changed = true;
+  }
+  if (typeof user.maxHearts !== 'number') {
+    user.maxHearts = DEFAULT_MAX_HEARTS;
+    changed = true;
+  }
+  if (typeof user.hearts !== 'number') {
+    user.hearts = user.maxHearts || DEFAULT_MAX_HEARTS;
+    changed = true;
+  }
+  if (!user.heartsUpdatedAt) {
+    user.heartsUpdatedAt = new Date();
+    changed = true;
+  }
+  if (typeof user.streakFreezes !== 'number') {
+    user.streakFreezes = 0;
+    changed = true;
+  }
+
+  const regenChanged = applyHeartRegen(user);
+  if (regenChanged) {
+    changed = true;
+  }
+  if (changed) {
+    await user.save();
+  }
 };
 
 // @route   POST /api/auth/register
@@ -113,8 +196,11 @@ router.post('/register', [
         totalXP: 0,
         currentStreak: 0,
         longestStreak: 0,
-        gems: 100,
-        hearts: 5,
+        gems: DEFAULT_GEMS,
+        hearts: DEFAULT_MAX_HEARTS,
+        maxHearts: DEFAULT_MAX_HEARTS,
+        heartsUpdatedAt: new Date(),
+        streakFreezes: 0,
         level: 1,
         preferences: {
           dailyGoal: 10,
@@ -154,6 +240,9 @@ router.post('/register', [
           currentStreak: fallbackUser.currentStreak,
           longestStreak: fallbackUser.longestStreak,
           gems: fallbackUser.gems,
+          hearts: fallbackUser.hearts,
+          maxHearts: fallbackUser.maxHearts,
+          streakFreezes: fallbackUser.streakFreezes,
           isDemo: true
         },
         recoveryCode,
@@ -208,7 +297,10 @@ router.post('/register', [
         displayName: user.displayName,
         totalXP: user.totalXP,
         currentStreak: user.currentStreak,
-        longestStreak: user.longestStreak
+        longestStreak: user.longestStreak,
+        gems: user.gems,
+        hearts: user.hearts,
+        maxHearts: user.maxHearts
       },
       recoveryCode,
       token
@@ -298,6 +390,7 @@ router.post('/login', [
 
       // Update last active
       await user.updateLastActive();
+      await ensureUserEconomy(user);
       token = generateToken(user._id);
     }
 
@@ -320,6 +413,10 @@ router.post('/login', [
         totalXP: user.totalXP,
         currentStreak: user.currentStreak,
         longestStreak: user.longestStreak,
+        gems: user.gems,
+        hearts: user.hearts,
+        maxHearts: user.maxHearts,
+        streakFreezes: user.streakFreezes,
         preferences: user.preferences,
         achievements: user.achievements,
         courses: user.courses
@@ -481,7 +578,29 @@ router.get('/me', auth, async (req, res) => {
           message: 'User not found'
         });
       }
+
+      await ensureUserEconomy(user);
+
+      const hasLessonAchievement = user.achievements?.some((achievement) => achievement.id === 'first_lesson');
+      if (!hasLessonAchievement && user.lessonProgress && user.lessonProgress.length > 0) {
+        user.achievements.push({
+          id: 'first_lesson',
+          title: 'First Steps',
+          description: 'Complete your first lesson',
+          icon: 'Trophy',
+          category: 'lessons',
+          rarity: 'common',
+          xpReward: 50,
+          gemReward: 25,
+          unlockedAt: new Date(),
+          progress: 1,
+          maxProgress: 1
+        });
+        await user.save();
+      }
     }
+
+    const heartRegen = getHeartRegenInfo(user);
 
     res.json({
       success: true,
@@ -496,6 +615,9 @@ router.get('/me', auth, async (req, res) => {
         longestStreak: user.longestStreak,
         gems: user.gems,
         hearts: user.hearts,
+        maxHearts: user.maxHearts,
+        streakFreezes: user.streakFreezes,
+        heartRegen,
         level: user.level,
         preferences: user.preferences || {},
         achievements: user.achievements || [],

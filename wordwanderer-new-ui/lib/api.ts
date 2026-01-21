@@ -1,5 +1,13 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 const TOKEN_KEY = "ww-token"
+export const BALANCE_EVENT_NAME = "ww-balance-update"
+
+export type BalanceUpdate = {
+  gems?: number
+  hearts?: number
+  maxHearts?: number
+  currentStreak?: number
+}
 
 export const getStoredToken = () => {
   if (typeof window === "undefined") {
@@ -17,6 +25,12 @@ export const setStoredToken = (token: string) => {
 export const clearStoredToken = () => {
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(TOKEN_KEY)
+  }
+}
+
+export const emitBalanceUpdate = (detail: BalanceUpdate) => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(BALANCE_EVENT_NAME, { detail }))
   }
 }
 

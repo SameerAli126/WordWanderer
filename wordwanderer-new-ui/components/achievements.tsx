@@ -4,37 +4,51 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 
-const achievements = [
-  {
-    icon: "🔥",
-    title: "Wildfire",
-    description: "You reached a 365-day streak",
-    color: "bg-orange-500",
-    completed: true,
-  },
-  {
-    icon: "🧙",
-    title: "Sage",
-    description: "You earned 30000 XP",
-    color: "bg-orange-500",
-    completed: true,
-  },
-  {
-    icon: "🎓",
-    title: "Scholar",
-    description: "Learn 1500 new words in a single course",
-    color: "bg-red-500",
-    completed: false,
-    progress: 1003,
-    total: 1500,
-  },
-]
+export interface AchievementItem {
+  id: string
+  title: string
+  description: string
+  icon?: string
+  category?: string
+  rarity?: string
+  xpReward?: number
+  gemReward?: number
+  unlockedAt?: string | null
+  progress?: number
+  maxProgress?: number
+}
 
 interface AchievementsProps {
+  achievements?: AchievementItem[]
   onViewAll?: () => void
 }
 
-export function Achievements({ onViewAll }: AchievementsProps) {
+const rarityStyles: Record<string, string> = {
+  common: "bg-slate-600",
+  rare: "bg-blue-600",
+  epic: "bg-purple-600",
+  legendary: "bg-yellow-500",
+}
+
+const iconMap: Record<string, string> = {
+  Trophy: "🏆",
+  trophy: "🏆",
+  Star: "⭐",
+  star: "⭐",
+  Flame: "🔥",
+  flame: "🔥",
+  Sparkles: "✨",
+  sparkles: "✨",
+}
+
+const resolveIcon = (icon?: string) => {
+  if (!icon) {
+    return "🏅"
+  }
+  return iconMap[icon] ?? icon
+}
+
+export function Achievements({ achievements = [], onViewAll }: AchievementsProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -44,33 +58,54 @@ export function Achievements({ onViewAll }: AchievementsProps) {
         </Button>
       </div>
 
-      <div className="space-y-4">
-        {achievements.map((achievement, index) => (
-          <Card key={index} className="bg-slate-800 border-slate-700">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div
-                className={`w-12 h-12 ${achievement.color} rounded-lg flex items-center justify-center text-2xl flex-shrink-0`}
-              >
-                {achievement.icon}
-              </div>
+      {achievements.length === 0 ? (
+        <Card className="bg-slate-800 border-slate-700">
+          <CardContent className="p-4 text-slate-300 text-sm">
+            Complete lessons to unlock your first achievement.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {achievements.map((achievement) => {
+            const completed = Boolean(achievement.unlockedAt)
+            const progress = achievement.progress ?? 0
+            const maxProgress = achievement.maxProgress ?? 0
+            const showProgress = !completed && maxProgress > 1
+            const colorClass = rarityStyles[achievement.rarity ?? "common"] ?? "bg-slate-600"
+            const iconLabel = resolveIcon(achievement.icon)
 
-              <div className="flex-1">
-                <h3 className="font-bold text-white mb-1">{achievement.title}</h3>
-                <p className="text-slate-300 text-sm mb-2">{achievement.description}</p>
-
-                {!achievement.completed && achievement.progress && achievement.total && (
-                  <div className="flex items-center gap-2">
-                    <Progress value={(achievement.progress / achievement.total) * 100} className="flex-1 h-2" />
-                    <span className="text-slate-400 text-sm">
-                      {achievement.progress}/{achievement.total}
-                    </span>
+            return (
+              <Card key={achievement.id} className="bg-slate-800 border-slate-700">
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className={`w-12 h-12 ${colorClass} rounded-lg flex items-center justify-center text-xl flex-shrink-0`}>
+                    {iconLabel}
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+
+                  <div className="flex-1">
+                    <h3 className="font-bold text-white mb-1">{achievement.title}</h3>
+                    <p className="text-slate-300 text-sm mb-2">{achievement.description}</p>
+                    {(achievement.xpReward || achievement.gemReward) && (
+                      <div className="flex items-center gap-3 text-xs text-slate-400 mb-2">
+                        {achievement.xpReward ? <span>+{achievement.xpReward} XP</span> : null}
+                        {achievement.gemReward ? <span>+{achievement.gemReward} Gems</span> : null}
+                      </div>
+                    )}
+
+                    {showProgress && (
+                      <div className="flex items-center gap-2">
+                        <Progress value={(progress / maxProgress) * 100} className="flex-1 h-2" />
+                        <span className="text-slate-400 text-sm">
+                          {progress}/{maxProgress}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

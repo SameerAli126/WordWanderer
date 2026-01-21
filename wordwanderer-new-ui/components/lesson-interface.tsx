@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { X, Volume2, CheckCircle, XCircle, Heart } from "lucide-react"
 import type { Lesson, LessonQuestion } from "@/types/lesson"
-import { apiRequest } from "@/lib/api"
+import { apiRequest, emitBalanceUpdate } from "@/lib/api"
 
 interface LessonInterfaceProps {
   lesson: Lesson
@@ -16,6 +16,41 @@ interface LessonInterfaceProps {
 
 interface LessonCompletionResponse {
   success: boolean
+  user?: {
+    totalXP: number
+    currentStreak: number
+    longestStreak: number
+    gems?: number
+    hearts?: number
+    maxHearts?: number
+  }
+  rewards?: {
+    gemsEarned?: number
+    xpEarned?: number
+  }
+  unlockedAchievement?: {
+    id: string
+    title: string
+    description: string
+    icon: string
+    xpReward: number
+    gemReward?: number
+  } | null
+}
+
+interface HeartUpdateResponse {
+  hearts: number
+  maxHearts: number
+  gems: number
+}
+
+interface SpeechScoreResponse {
+  scores: {
+    overall: number
+    pronunciation: number
+    tone: number
+  }
+  feedback: string
 }
 
 const normalizeText = (value: string) => value.trim().toLowerCase()
@@ -64,13 +99,25 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
   const [orderingSelection, setOrderingSelection] = useState<string[]>([])
   const [showResult, setShowResult] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
-  const [hearts, setHearts] = useState(5)
+  const [hearts, setHearts] = useState(0)
+  const [maxHearts, setMaxHearts] = useState(5)
   const [matchSelection, setMatchSelection] = useState<{ left?: string; right?: string }>({})
   const [matchPairs, setMatchPairs] = useState<Record<string, string>>({})
   const [matchError, setMatchError] = useState("")
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [speechScore, setSpeechScore] = useState<SpeechScoreResponse | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const resultsRef = useRef<{ id: string; correct: boolean }[]>([])
+  const resultsRef = useRef<
+    {
+      id: string
+      correct: boolean
+      prompt: string
+      correctAnswer: string | string[]
+      userAnswer: string
+      type: string
+      speechScore?: number
+    }[]
+  >([])
   const startTimeRef = useRef(Date.now())
 
   const currentQuestion = lesson.questions[currentQuestionIndex] ?? lesson.questions[0]
@@ -113,8 +160,36 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
   const matchedLeft = useMemo(() => new Set(Object.keys(matchPairs)), [matchPairs])
   const matchedRight = useMemo(() => new Set(Object.values(matchPairs)), [matchPairs])
 
+  useEffect(() => {
+    const loadHearts = async () => {
+      try {
+        const response = await apiRequest<{ user: { hearts?: number; maxHearts?: number } }>("/api/auth/me")
+        setHearts(response.user.hearts ?? 0)
+        setMaxHearts(response.user.maxHearts ?? 5)
+      } catch (error) {
+        console.error("Failed to load hearts:", error)
+      }
+    }
+
+    void loadHearts()
+  }, [])
+
   const handleExit = () => {
     router.push("/app?view=learn")
+  }
+
+  const spendHeart = async () => {
+    try {
+      const response = await apiRequest<HeartUpdateResponse>("/api/users/hearts/use", {
+        method: "POST",
+        body: JSON.stringify({ amount: 1 }),
+      })
+      setHearts(response.hearts)
+      setMaxHearts(response.maxHearts)
+      emitBalanceUpdate({ hearts: response.hearts, maxHearts: response.maxHearts, gems: response.gems })
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to update hearts.")
+    }
   }
 
   const handleMatchSelection = (nextLeft?: string, nextRight?: string) => {
@@ -128,7 +203,7 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
 
       setMatchSelection({})
       setMatchError("Not a match. Try again.")
-      setHearts((prev) => Math.max(0, prev - 1))
+      void spendHeart()
       return
     }
 
@@ -164,31 +239,74 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
     setOrderingSelection((prev) => prev.filter((entry) => entry !== item))
   }
 
-  const handleSubmit = () => {
+  const buildUserAnswer = () => {
+    if (!currentQuestion) {
+      return ""
+    }
+    if (isMatchQuestion) {
+      return JSON.stringify(matchPairs)
+    }
+    if (isOrderingQuestion) {
+      return JSON.stringify(orderingSelection)
+    }
+    if (isTextQuestion || (isAudioQuestion && !hasOptions)) {
+      return textAnswer
+    }
+    return selectedAnswer
+  }
+
+  const handleSubmit = async () => {
     if (!currentQuestion) {
       return
     }
 
     let correct = false
+    let speechScoreValue: number | undefined
     if (isMatchQuestion) {
       correct = matchPairsList.every((pair) => matchPairs[pair.left] === pair.right)
     } else if (isOrderingQuestion) {
       correct = compareOrdering(orderingSelection, currentQuestion.correctAnswer)
     } else if (isTextQuestion || (isAudioQuestion && !hasOptions)) {
-      correct = compareTextAnswer(textAnswer, currentQuestion.correctAnswer)
+      if (currentQuestion.isSpeech) {
+        try {
+          const response = await apiRequest<SpeechScoreResponse>("/api/speech/score", {
+            method: "POST",
+            body: JSON.stringify({
+              expected: currentQuestion.speechExpected || String(currentQuestion.correctAnswer),
+              transcript: textAnswer,
+            }),
+          })
+          setSpeechScore(response)
+          speechScoreValue = response.scores.overall
+          correct = response.scores.overall >= 80
+        } catch (error) {
+          setSubmitError(error instanceof Error ? error.message : "Unable to score speech.")
+          correct = compareTextAnswer(textAnswer, currentQuestion.correctAnswer)
+        }
+      } else {
+        correct = compareTextAnswer(textAnswer, currentQuestion.correctAnswer)
+      }
     } else {
       correct = compareSelectAnswer(selectedAnswer, currentQuestion.correctAnswer)
     }
 
     resultsRef.current = [
       ...resultsRef.current,
-      { id: currentQuestion.id, correct },
+      {
+        id: currentQuestion.id,
+        correct,
+        prompt: currentQuestion.prompt,
+        correctAnswer: currentQuestion.correctAnswer,
+        userAnswer: buildUserAnswer(),
+        type: currentQuestion.type,
+        speechScore: speechScoreValue,
+      },
     ]
 
     setIsCorrect(correct)
     setShowResult(true)
     if (!correct) {
-      setHearts((prev) => Math.max(0, prev - 1))
+      await spendHeart()
     }
   }
 
@@ -202,6 +320,7 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
     setMatchPairs({})
     setMatchError("")
     setSubmitError(null)
+    setSpeechScore(null)
   }
 
   const finalizeLesson = async () => {
@@ -219,7 +338,7 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
       const timeSpent = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000))
       const xpEarned = Math.round((lesson.xpReward * accuracy) / 100)
 
-      await apiRequest<LessonCompletionResponse>("/api/progress/lesson-complete", {
+      const response = await apiRequest<LessonCompletionResponse>("/api/progress/lesson-complete", {
         method: "POST",
         body: JSON.stringify({
           lessonId: lesson.id,
@@ -227,8 +346,29 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
           timeSpent,
           xpEarned,
           questions: resultsRef.current,
+          questionDetails: resultsRef.current.map((item) => ({
+            questionId: item.id,
+            prompt: item.prompt,
+            correctAnswer: item.correctAnswer,
+            userAnswer: item.userAnswer,
+            type: item.type,
+            isCorrect: item.correct,
+          })),
         }),
       })
+
+      if (response.unlockedAchievement) {
+        window.sessionStorage.setItem("ww-last-achievement", JSON.stringify(response.unlockedAchievement))
+      }
+      if (response.user) {
+        const detail = {
+          currentStreak: response.user.currentStreak,
+          ...(typeof response.user.gems === "number" ? { gems: response.user.gems } : {}),
+          ...(typeof response.user.hearts === "number" ? { hearts: response.user.hearts } : {}),
+          ...(typeof response.user.maxHearts === "number" ? { maxHearts: response.user.maxHearts } : {}),
+        }
+        emitBalanceUpdate(detail)
+      }
 
       router.push("/app?view=learn")
     } catch (error) {
@@ -273,15 +413,13 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
+            {Array.from({ length: maxHearts }).map((_, i) => (
+              <Heart
                 key={i}
-                className={`w-6 h-6 rounded-full ${
-                  i < hearts ? "bg-red-500" : "bg-slate-600"
-                } flex items-center justify-center`}
-              >
-                <Heart className="w-3 h-3 text-white" />
-              </div>
+                className={`w-5 h-5 ${
+                  i < hearts ? "text-rose-400 fill-rose-400" : "text-slate-600"
+                }`}
+              />
             ))}
           </div>
         </div>
@@ -443,6 +581,12 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
                   <span className="font-bold">{isCorrect ? "Correct!" : "Incorrect"}</span>
                 </div>
                 {currentQuestion.explanation && <p className="text-sm text-slate-300">{currentQuestion.explanation}</p>}
+                {speechScore && (
+                  <div className="mt-3 text-sm text-slate-200">
+                    <p className="font-medium">Speech score: {speechScore.scores.overall}/100</p>
+                    <p className="text-slate-300">{speechScore.feedback}</p>
+                  </div>
+                )}
               </div>
             )}
 

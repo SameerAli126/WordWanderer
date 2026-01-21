@@ -16,6 +16,8 @@ export interface LessonQuestion {
   pairs?: LessonMatchPair[]
   items?: string[]
   audio?: string
+  isSpeech?: boolean
+  speechExpected?: string
 }
 
 export interface Lesson {

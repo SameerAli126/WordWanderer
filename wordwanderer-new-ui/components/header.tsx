@@ -10,12 +10,36 @@ interface HeaderProps {
   onLanguageClick?: () => void
   onNotificationClick?: () => void
   onLogout?: () => void
+  stats?: {
+    currentStreak?: number
+    gems?: number
+    hearts?: number
+    maxHearts?: number
+  }
 }
 
 type StatVariant = "streak" | "gems" | "hearts"
 
-export function Header({ onProfileClick, onStreakClick, onLanguageClick, onNotificationClick, onLogout }: HeaderProps) {
+export function Header({
+  onProfileClick,
+  onStreakClick,
+  onLanguageClick,
+  onNotificationClick,
+  onLogout,
+  stats,
+}: HeaderProps) {
   const { theme } = useTheme()
+
+  const formatStat = (value?: number) => {
+    if (typeof value !== "number") {
+      return "--"
+    }
+    return value.toLocaleString()
+  }
+
+  const streakValue = formatStat(stats?.currentStreak)
+  const gemsValue = formatStat(stats?.gems)
+  const heartsValue = formatStat(stats?.hearts)
 
   const getHeaderClasses = () => {
     switch (theme) {
@@ -98,14 +122,14 @@ export function Header({ onProfileClick, onStreakClick, onLanguageClick, onNotif
             >
               <Flame className="w-4 h-4" />
             </span>
-            <span className="tabular-nums">1,058</span>
+            <span className="tabular-nums">{streakValue}</span>
           </div>
 
           <div className={getStatClasses()}>
             <span className={`flex h-7 w-7 items-center justify-center rounded-full border ${getStatIconClasses("gems")}`}>
               <Gem className="w-4 h-4" />
             </span>
-            <span className="tabular-nums">10,866</span>
+            <span className="tabular-nums">{gemsValue}</span>
           </div>
 
           <div className={getStatClasses()}>
@@ -114,7 +138,7 @@ export function Header({ onProfileClick, onStreakClick, onLanguageClick, onNotif
             >
               <Heart className="w-4 h-4" />
             </span>
-            <span className="tabular-nums">5</span>
+            <span className="tabular-nums">{heartsValue}</span>
           </div>
         </div>
 
@@ -174,17 +198,17 @@ export function Header({ onProfileClick, onStreakClick, onLanguageClick, onNotif
       <div className="sm:hidden flex items-center justify-center gap-6 mt-3 pt-3 border-t border-slate-700/60">
         <div className="flex items-center gap-2" onClick={onStreakClick}>
           <Flame className="w-4 h-4 text-orange-500" />
-          <span className="text-sm font-semibold">1,058</span>
+          <span className="text-sm font-semibold">{streakValue}</span>
         </div>
 
         <div className="flex items-center gap-2">
           <Gem className="w-4 h-4 text-blue-500" />
-          <span className="text-sm font-semibold">10,866</span>
+          <span className="text-sm font-semibold">{gemsValue}</span>
         </div>
 
         <div className="flex items-center gap-2">
           <Heart className="w-4 h-4 text-red-500" />
-          <span className="text-sm font-semibold">5</span>
+          <span className="text-sm font-semibold">{heartsValue}</span>
         </div>
       </div>
     </header>
