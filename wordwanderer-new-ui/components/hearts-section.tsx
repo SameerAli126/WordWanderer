@@ -11,19 +11,31 @@ export function HeartsSection() {
   const [maxHearts, setMaxHearts] = useState(5)
   const [gems, setGems] = useState(0)
   const [nextHeartIn, setNextHeartIn] = useState<number | null>(null)
+  const [unlimitedHeartsUntil, setUnlimitedHeartsUntil] = useState<string | null>(null)
+  const [superTrialUsed, setSuperTrialUsed] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefilling, setIsRefilling] = useState(false)
+  const [isStartingTrial, setIsStartingTrial] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadBalance = async () => {
     try {
       const response = await apiRequest<{
-        user: { hearts?: number; maxHearts?: number; gems?: number; heartRegen?: { nextInSeconds: number } }
+        user: {
+          hearts?: number
+          maxHearts?: number
+          gems?: number
+          heartRegen?: { nextInSeconds: number }
+          unlimitedHeartsUntil?: string | null
+          superTrialUsed?: boolean
+        }
       }>("/api/auth/me")
       setHearts(response.user.hearts ?? 0)
       setMaxHearts(response.user.maxHearts ?? 5)
       setGems(response.user.gems ?? 0)
       setNextHeartIn(response.user.heartRegen?.nextInSeconds ?? null)
+      setUnlimitedHeartsUntil(response.user.unlimitedHeartsUntil ?? null)
+      setSuperTrialUsed(Boolean(response.user.superTrialUsed))
       setError(null)
     } catch (loadError) {
       console.error("Failed to load balance:", loadError)
@@ -52,6 +64,9 @@ export function HeartsSection() {
         }
         if (typeof detail.gems === "number") {
           setGems(detail.gems)
+        }
+        if (typeof detail.unlimitedHeartsUntil !== "undefined") {
+          setUnlimitedHeartsUntil(detail.unlimitedHeartsUntil ?? null)
         }
         return
       }
@@ -90,8 +105,48 @@ export function HeartsSection() {
     }
   }
 
+  const unlimitedHeartsActive = unlimitedHeartsUntil
+    ? new Date(unlimitedHeartsUntil).getTime() > Date.now()
+    : false
   const heartsFull = hearts >= maxHearts
-  const refillDisabled = isLoading || isRefilling || heartsFull || gems < HEART_REFILL_COST
+  const refillDisabled =
+    isLoading || isRefilling || heartsFull || gems < HEART_REFILL_COST || unlimitedHeartsActive
+
+  const handleSuperTrial = async () => {
+    if (isStartingTrial || superTrialUsed) {
+      return
+    }
+    setIsStartingTrial(true)
+    setError(null)
+    try {
+      const response = await apiRequest<{
+        unlimitedHeartsUntil: string | null
+        superTrialUsed: boolean
+        hearts?: number
+        maxHearts?: number
+      }>("/api/users/power-ups/purchase", {
+        method: "POST",
+        body: JSON.stringify({ type: "super-trial" }),
+      })
+      setUnlimitedHeartsUntil(response.unlimitedHeartsUntil ?? null)
+      setSuperTrialUsed(Boolean(response.superTrialUsed))
+      if (typeof response.hearts === "number") {
+        setHearts(response.hearts)
+      }
+      if (typeof response.maxHearts === "number") {
+        setMaxHearts(response.maxHearts)
+      }
+      emitBalanceUpdate({
+        hearts: response.hearts ?? hearts,
+        maxHearts: response.maxHearts ?? maxHearts,
+        unlimitedHeartsUntil: response.unlimitedHeartsUntil ?? null,
+      })
+    } catch (trialError) {
+      setError(trialError instanceof Error ? trialError.message : "Unable to start Super trial.")
+    } finally {
+      setIsStartingTrial(false)
+    }
+  }
 
   return (
     <div>
@@ -112,6 +167,9 @@ export function HeartsSection() {
           <span className="text-slate-400">
             Next heart in {Math.ceil(nextHeartIn / 60)} min
           </span>
+        )}
+        {unlimitedHeartsActive && (
+          <span className="text-emerald-300 font-medium">Unlimited hearts active</span>
         )}
       </div>
 
@@ -148,7 +206,7 @@ export function HeartsSection() {
                 onClick={handleRefill}
                 disabled={refillDisabled}
               >
-                {isRefilling ? "REFILLING..." : heartsFull ? "FULL" : "REFILL"}
+                {isRefilling ? "REFILLING..." : unlimitedHeartsActive ? "ACTIVE" : heartsFull ? "FULL" : "REFILL"}
               </Button>
             </div>
           </CardContent>
@@ -171,8 +229,10 @@ export function HeartsSection() {
               <Button
                 variant="default"
                 className="px-6 py-2 font-bold text-sm sm:text-base flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={handleSuperTrial}
+                disabled={superTrialUsed || isStartingTrial}
               >
-                FREE TRIAL
+                {isStartingTrial ? "STARTING..." : superTrialUsed ? "USED" : "FREE TRIAL"}
               </Button>
             </div>
           </CardContent>

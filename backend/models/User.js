@@ -20,9 +20,21 @@ const userPreferencesSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  emailReminders: {
+    type: Boolean,
+    default: false
+  },
+  dailyGoalReminder: {
+    type: Boolean,
+    default: true
+  },
+  streakProtection: {
+    type: Boolean,
+    default: true
+  },
   theme: {
     type: String,
-    enum: ['light', 'dark', 'auto'],
+    enum: ['light', 'dark', 'auto', 'wanderer'],
     default: 'light'
   },
   language: {
@@ -378,6 +390,53 @@ const userSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  xpBoosts: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  streakShieldUntil: {
+    type: Date,
+    default: null
+  },
+  unlimitedHeartsUntil: {
+    type: Date,
+    default: null
+  },
+  superTrialUsed: {
+    type: Boolean,
+    default: false
+  },
+  doubleOrNothing: {
+    active: {
+      type: Boolean,
+      default: false
+    },
+    startedAt: {
+      type: Date,
+      default: null
+    },
+    startStreak: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    targetStreak: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    startGems: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    lastResult: {
+      type: String,
+      enum: ['won', 'lost', null],
+      default: null
+    }
+  },
   currentStreak: {
     type: Number,
     default: 0,
@@ -476,9 +535,17 @@ userSchema.methods.addXP = function(xp) {
 };
 
 // Update streak
-userSchema.methods.updateStreak = function() {
+userSchema.methods.updateStreak = async function() {
   const today = new Date();
   const lastStreakDate = this.lastStreakDate;
+  const previousStreak = this.currentStreak || 0;
+  let streakBroken = false;
+  let usedFreeze = false;
+  let usedShield = false;
+
+  if (this.streakShieldUntil && this.streakShieldUntil <= today) {
+    this.streakShieldUntil = null;
+  }
   
   if (!lastStreakDate) {
     // First time
@@ -492,11 +559,17 @@ userSchema.methods.updateStreak = function() {
       this.currentStreak += 1;
       this.lastStreakDate = today;
     } else if (daysDiff > 1) {
-      // Streak broken unless a freeze is available for one missed day
-      if (daysDiff === 2 && this.streakFreezes > 0) {
+      // Streak broken unless a shield or freeze is available for one missed day
+      if (this.streakShieldUntil && this.streakShieldUntil > today) {
+        usedShield = true;
+        this.streakShieldUntil = null;
+        this.lastStreakDate = today;
+      } else if (daysDiff === 2 && this.streakFreezes > 0) {
+        usedFreeze = true;
         this.streakFreezes -= 1;
         this.lastStreakDate = today;
       } else {
+        streakBroken = true;
         this.currentStreak = 1;
         this.lastStreakDate = today;
       }
@@ -509,7 +582,14 @@ userSchema.methods.updateStreak = function() {
     this.longestStreak = this.currentStreak;
   }
   
-  return this.save();
+  await this.save();
+  return {
+    previousStreak,
+    currentStreak: this.currentStreak,
+    streakBroken,
+    usedFreeze,
+    usedShield
+  };
 };
 
 module.exports = mongoose.model('User', userSchema);

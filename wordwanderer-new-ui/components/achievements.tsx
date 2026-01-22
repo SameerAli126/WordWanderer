@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { Flame, Sparkles, Star, Trophy } from "lucide-react"
 
 export interface AchievementItem {
   id: string
@@ -30,22 +31,15 @@ const rarityStyles: Record<string, string> = {
   legendary: "bg-yellow-500",
 }
 
-const iconMap: Record<string, string> = {
-  Trophy: "🏆",
-  trophy: "🏆",
-  Star: "⭐",
-  star: "⭐",
-  Flame: "🔥",
-  flame: "🔥",
-  Sparkles: "✨",
-  sparkles: "✨",
-}
-
-const resolveIcon = (icon?: string) => {
-  if (!icon) {
-    return "🏅"
-  }
-  return iconMap[icon] ?? icon
+const iconMap: Record<string, typeof Trophy> = {
+  Trophy,
+  trophy: Trophy,
+  Star,
+  star: Star,
+  Flame,
+  flame: Flame,
+  Sparkles,
+  sparkles: Sparkles,
 }
 
 export function Achievements({ achievements = [], onViewAll }: AchievementsProps) {
@@ -72,13 +66,13 @@ export function Achievements({ achievements = [], onViewAll }: AchievementsProps
             const maxProgress = achievement.maxProgress ?? 0
             const showProgress = !completed && maxProgress > 1
             const colorClass = rarityStyles[achievement.rarity ?? "common"] ?? "bg-slate-600"
-            const iconLabel = resolveIcon(achievement.icon)
+            const Icon = iconMap[achievement.icon ?? ""] ?? Trophy
 
             return (
               <Card key={achievement.id} className="bg-slate-800 border-slate-700">
                 <CardContent className="p-4 flex items-center gap-4">
-                  <div className={`w-12 h-12 ${colorClass} rounded-lg flex items-center justify-center text-xl flex-shrink-0`}>
-                    {iconLabel}
+                  <div className={`w-12 h-12 ${colorClass} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                    <Icon className="w-6 h-6 text-white" />
                   </div>
 
                   <div className="flex-1">

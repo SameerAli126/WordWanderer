@@ -8,6 +8,17 @@ export type BalanceUpdate = {
   maxHearts?: number
   currentStreak?: number
   streakFreezes?: number
+  xpBoosts?: number
+  streakShieldUntil?: string | null
+  unlimitedHeartsUntil?: string | null
+  doubleOrNothing?: {
+    active: boolean
+    startedAt?: string | null
+    startStreak?: number
+    targetStreak?: number
+    startGems?: number
+    lastResult?: "won" | "lost" | null
+  }
 }
 
 export const getStoredToken = () => {

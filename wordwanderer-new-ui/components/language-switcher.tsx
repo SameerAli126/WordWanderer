@@ -1,6 +1,4 @@
 "use client"
-
-import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -8,29 +6,27 @@ import { Globe, Star, Lock, CheckCircle } from "lucide-react"
 
 interface Language {
   code: string
-  name: string
+  label: string
   flagCode: string
   progress: number
   isUnlocked: boolean
-  isActive: boolean
 }
 
 interface LanguageSwitcherProps {
   isOpen: boolean
   onClose: () => void
   onLanguageChange: (language: string) => void
+  languages: Language[]
+  activeLanguageCode?: string
 }
 
-export function LanguageSwitcher({ isOpen, onClose, onLanguageChange }: LanguageSwitcherProps) {
-  const [languages] = useState<Language[]>([
-    { code: "zh", name: "Chinese", flagCode: "cn", progress: 75, isUnlocked: true, isActive: true },
-    { code: "es", name: "Spanish", flagCode: "es", progress: 45, isUnlocked: true, isActive: false },
-    { code: "fr", name: "French", flagCode: "fr", progress: 20, isUnlocked: true, isActive: false },
-    { code: "de", name: "German", flagCode: "de", progress: 0, isUnlocked: false, isActive: false },
-    { code: "ja", name: "Japanese", flagCode: "jp", progress: 0, isUnlocked: false, isActive: false },
-    { code: "ko", name: "Korean", flagCode: "kr", progress: 0, isUnlocked: false, isActive: false },
-  ])
-
+export function LanguageSwitcher({
+  isOpen,
+  onClose,
+  onLanguageChange,
+  languages,
+  activeLanguageCode,
+}: LanguageSwitcherProps) {
   const handleLanguageSelect = (language: Language) => {
     if (language.isUnlocked) {
       onLanguageChange(language.code)
@@ -53,7 +49,7 @@ export function LanguageSwitcher({ isOpen, onClose, onLanguageChange }: Language
             <div
               key={language.code}
               className={`p-4 rounded-lg border transition-all cursor-pointer ${
-                language.isActive
+                language.code === activeLanguageCode
                   ? "bg-gradient-to-r from-green-500/20 to-blue-500/20 border-green-400/50"
                   : language.isUnlocked
                     ? "bg-slate-800/50 border-slate-600 hover:border-slate-500"
@@ -64,13 +60,13 @@ export function LanguageSwitcher({ isOpen, onClose, onLanguageChange }: Language
               <div className="flex items-center gap-3">
                 <img
                   src={`https://flagcdn.com/w20/${language.flagCode}.png`}
-                  alt={`${language.name} flag`}
+                  alt={`${language.label} flag`}
                   className="h-4 w-6 rounded-sm border border-white/10"
                 />
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-white">{language.name}</h3>
-                    {language.isActive && <CheckCircle className="w-4 h-4 text-green-400" />}
+                    <h3 className="font-semibold text-white">{language.label}</h3>
+                    {language.code === activeLanguageCode && <CheckCircle className="w-4 h-4 text-green-400" />}
                     {!language.isUnlocked && <Lock className="w-4 h-4 text-slate-500" />}
                   </div>
 

@@ -9,8 +9,20 @@ const DEFAULT_GEMS = 1000;
 const DEFAULT_MAX_HEARTS = 5;
 const HEART_REFILL_COST = 100;
 const STREAK_FREEZE_COST = 200;
+const XP_BOOST_COST = 25;
+const STREAK_SHIELD_COST = 10;
+const DOUBLE_OR_NOTHING_COST = 50;
+const SUPER_TRIAL_HOURS = 24;
+const STREAK_SHIELD_HOURS = 24;
 const HEART_REGEN_MINUTES = 10;
 const HEART_REGEN_MS = HEART_REGEN_MINUTES * 60 * 1000;
+
+const isUnlimitedHeartsActive = (user) => {
+  if (!user.unlimitedHeartsUntil) {
+    return false;
+  }
+  return new Date(user.unlimitedHeartsUntil).getTime() > Date.now();
+};
 
 const ensureEconomyFields = async (user) => {
   let changed = false;
@@ -34,12 +46,42 @@ const ensureEconomyFields = async (user) => {
     user.streakFreezes = 0;
     changed = true;
   }
+  if (typeof user.xpBoosts !== 'number') {
+    user.xpBoosts = 0;
+    changed = true;
+  }
+  if (user.streakShieldUntil === undefined) {
+    user.streakShieldUntil = null;
+    changed = true;
+  }
+  if (user.unlimitedHeartsUntil === undefined) {
+    user.unlimitedHeartsUntil = null;
+    changed = true;
+  }
+  if (typeof user.superTrialUsed !== 'boolean') {
+    user.superTrialUsed = false;
+    changed = true;
+  }
+  if (typeof user.doubleOrNothing !== 'object' || user.doubleOrNothing === null) {
+    user.doubleOrNothing = {
+      active: false,
+      startedAt: null,
+      startStreak: 0,
+      targetStreak: 0,
+      startGems: user.gems ?? DEFAULT_GEMS,
+      lastResult: null
+    };
+    changed = true;
+  }
   if (changed) {
     await user.save();
   }
 };
 
 const getHeartRegenInfo = (user) => {
+  if (isUnlimitedHeartsActive(user)) {
+    return { nextInSeconds: 0, fullInSeconds: 0 };
+  }
   if (user.hearts >= user.maxHearts) {
     return { nextInSeconds: 0, fullInSeconds: 0 };
   }
@@ -151,10 +193,31 @@ router.put('/preferences', auth, [
     .optional()
     .isBoolean()
     .withMessage('Notifications enabled must be a boolean'),
+  body('emailReminders')
+    .optional()
+    .isBoolean()
+    .withMessage('Email reminders must be a boolean'),
+  body('dailyGoalReminder')
+    .optional()
+    .isBoolean()
+    .withMessage('Daily goal reminder must be a boolean'),
+  body('streakProtection')
+    .optional()
+    .isBoolean()
+    .withMessage('Streak protection must be a boolean'),
+  body('reminderTime')
+    .optional()
+    .matches(/^\d{2}:\d{2}$/)
+    .withMessage('Reminder time must be in HH:MM format'),
   body('theme')
     .optional()
-    .isIn(['light', 'dark', 'auto'])
-    .withMessage('Theme must be light, dark, or auto')
+    .isIn(['light', 'dark', 'auto', 'wanderer'])
+    .withMessage('Theme must be light, dark, auto, or wanderer'),
+  body('language')
+    .optional()
+    .isString()
+    .isLength({ min: 2, max: 10 })
+    .withMessage('Language code must be valid')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -225,6 +288,17 @@ router.post('/hearts/use', auth, [
 
     await ensureEconomyFields(user);
 
+    if (isUnlimitedHeartsActive(user)) {
+      return res.json({
+        success: true,
+        hearts: user.maxHearts,
+        maxHearts: user.maxHearts,
+        gems: user.gems,
+        heartRegen: getHeartRegenInfo(user),
+        unlimitedHeartsUntil: user.unlimitedHeartsUntil
+      });
+    }
+
     if (user.hearts <= 0) {
       return res.status(400).json({
         success: false,
@@ -268,6 +342,13 @@ router.post('/hearts/refill', auth, async (req, res) => {
     }
 
     await ensureEconomyFields(user);
+
+    if (isUnlimitedHeartsActive(user)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Unlimited hearts are already active'
+      });
+    }
 
     if (user.hearts >= user.maxHearts) {
       return res.status(400).json({
@@ -341,6 +422,147 @@ router.post('/streak-freeze/purchase', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Purchase streak freeze error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// @route   POST /api/users/power-ups/purchase
+// @desc    Purchase a power-up using gems
+// @access  Private
+router.post('/power-ups/purchase', auth, [
+  body('type')
+    .isIn(['xp-boost', 'streak-shield', 'double-or-nothing', 'super-trial'])
+    .withMessage('Power-up type is invalid')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { type } = req.body;
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    await ensureEconomyFields(user);
+
+    if (type === 'xp-boost') {
+      if (user.gems < XP_BOOST_COST) {
+        return res.status(400).json({
+          success: false,
+          message: 'Not enough gems'
+        });
+      }
+      user.gems -= XP_BOOST_COST;
+      user.xpBoosts += 1;
+      await user.save();
+      return res.json({
+        success: true,
+        type,
+        gems: user.gems,
+        xpBoosts: user.xpBoosts,
+        cost: XP_BOOST_COST
+      });
+    }
+
+    if (type === 'streak-shield') {
+      if (user.gems < STREAK_SHIELD_COST) {
+        return res.status(400).json({
+          success: false,
+          message: 'Not enough gems'
+        });
+      }
+      const now = Date.now();
+      const existing = user.streakShieldUntil ? new Date(user.streakShieldUntil).getTime() : 0;
+      const baseTime = existing > now ? existing : now;
+      user.streakShieldUntil = new Date(baseTime + STREAK_SHIELD_HOURS * 60 * 60 * 1000);
+      user.gems -= STREAK_SHIELD_COST;
+      await user.save();
+      return res.json({
+        success: true,
+        type,
+        gems: user.gems,
+        streakShieldUntil: user.streakShieldUntil,
+        cost: STREAK_SHIELD_COST
+      });
+    }
+
+    if (type === 'double-or-nothing') {
+      if (user.doubleOrNothing?.active) {
+        return res.status(400).json({
+          success: false,
+          message: 'Double-or-nothing challenge already active'
+        });
+      }
+      if (user.gems < DOUBLE_OR_NOTHING_COST) {
+        return res.status(400).json({
+          success: false,
+          message: 'Not enough gems'
+        });
+      }
+      user.gems -= DOUBLE_OR_NOTHING_COST;
+      const startGems = user.gems;
+      const startStreak = user.currentStreak || 0;
+      user.doubleOrNothing = {
+        active: true,
+        startedAt: new Date(),
+        startStreak,
+        targetStreak: startStreak + 7,
+        startGems,
+        lastResult: null
+      };
+      await user.save();
+      return res.json({
+        success: true,
+        type,
+        gems: user.gems,
+        doubleOrNothing: user.doubleOrNothing,
+        cost: DOUBLE_OR_NOTHING_COST
+      });
+    }
+
+    if (type === 'super-trial') {
+      if (user.superTrialUsed) {
+        return res.status(400).json({
+          success: false,
+          message: 'Super trial already used'
+        });
+      }
+      const expiresAt = new Date(Date.now() + SUPER_TRIAL_HOURS * 60 * 60 * 1000);
+      user.unlimitedHeartsUntil = expiresAt;
+      user.superTrialUsed = true;
+      user.hearts = user.maxHearts;
+      user.heartsUpdatedAt = new Date();
+      await user.save();
+      return res.json({
+        success: true,
+        type,
+        unlimitedHeartsUntil: user.unlimitedHeartsUntil,
+        superTrialUsed: user.superTrialUsed,
+        hearts: user.hearts,
+        maxHearts: user.maxHearts
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: 'Unknown power-up type'
+    });
+  } catch (error) {
+    console.error('Purchase power-up error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

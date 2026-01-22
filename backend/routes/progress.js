@@ -14,6 +14,7 @@ const router = express.Router();
 const GEM_REWARD_RATIO = 0.1;
 const PERFECT_ACCURACY_BONUS = 5;
 const REVIEW_RESET_DELAY_MINUTES = 30;
+const XP_BOOST_MULTIPLIER = 2;
 const STREAK_ACHIEVEMENTS = [
   {
     id: 'streak_3',
@@ -137,6 +138,14 @@ const scheduleReview = (reviewItem, wasCorrect) => {
   reviewItem.lastReviewedAt = now;
 };
 
+const computeBaseXp = (lessonXp, accuracy, fallbackXp) => {
+  if (typeof lessonXp === 'number' && !Number.isNaN(lessonXp)) {
+    const computed = Math.round((lessonXp * accuracy) / 100);
+    return Math.max(0, computed);
+  }
+  return Math.max(0, fallbackXp || 0);
+};
+
 // @route   POST /api/progress/lesson-complete
 // @desc    Record lesson completion
 // @access  Private
@@ -202,6 +211,28 @@ router.post('/lesson-complete', auth, [
     if (typeof user.hearts !== 'number') {
       user.hearts = user.maxHearts || 5;
     }
+    if (typeof user.xpBoosts !== 'number') {
+      user.xpBoosts = 0;
+    }
+    if (typeof user.doubleOrNothing !== 'object' || user.doubleOrNothing === null) {
+      user.doubleOrNothing = {
+        active: false,
+        startedAt: null,
+        startStreak: 0,
+        targetStreak: 0,
+        startGems: user.gems || 0,
+        lastResult: null
+      };
+    }
+
+    const baseXp = computeBaseXp(lesson.xpReward, accuracy, xpEarned);
+    let finalXp = baseXp;
+    let xpBoostApplied = false;
+    if (user.xpBoosts > 0 && baseXp > 0) {
+      finalXp = baseXp * XP_BOOST_MULTIPLIER;
+      user.xpBoosts -= 1;
+      xpBoostApplied = true;
+    }
 
     const courseId = lesson.courseId;
     const unitId = lesson.unitId;
@@ -218,7 +249,7 @@ router.post('/lesson-complete', auth, [
       user.dailyStudySeconds = 0;
     }
     user.dailyLessonCount += 1;
-    user.dailyXP += xpEarned;
+    user.dailyXP += finalXp;
     user.dailyStudySeconds += timeSpent;
 
     // Ensure user is enrolled in the course
@@ -257,7 +288,7 @@ router.post('/lesson-complete', auth, [
       existingProgress.attempts += 1;
       existingProgress.accuracy = accuracy;
       existingProgress.bestAccuracy = Math.max(existingProgress.bestAccuracy || 0, accuracy);
-      existingProgress.xpEarned += xpEarned;
+      existingProgress.xpEarned += finalXp;
       existingProgress.lastAttemptAt = completedAt;
       existingProgress.status = 'completed';
       existingProgress.completedAt = completedAt;
@@ -270,7 +301,7 @@ router.post('/lesson-complete', auth, [
         attempts: 1,
         accuracy,
         bestAccuracy: accuracy,
-        xpEarned,
+        xpEarned: finalXp,
         lastAttemptAt: completedAt,
         completedAt
       });
@@ -376,13 +407,13 @@ router.post('/lesson-complete', auth, [
     }
 
     // Add XP and gems to user
-    await user.addXP(xpEarned);
-    const baseGems = Math.max(1, Math.round(xpEarned * GEM_REWARD_RATIO));
+    user.totalXP = (user.totalXP || 0) + finalXp;
+    const baseGems = Math.max(1, Math.round(baseXp * GEM_REWARD_RATIO));
     const gemsEarned = accuracy === 100 ? baseGems + PERFECT_ACCURACY_BONUS : baseGems;
     user.gems = (user.gems || 0) + gemsEarned;
 
     // Update user streak
-    await user.updateStreak();
+    const streakUpdate = await user.updateStreak();
 
     const streakValue = user.currentStreak || 0;
     STREAK_ACHIEVEMENTS.forEach((achievement) => {
@@ -422,6 +453,27 @@ router.post('/lesson-complete', auth, [
       user.gems = (user.gems || 0) + dailyQuestRewards.rewardGems;
     }
 
+    let doubleOrNothingResult = null;
+    if (user.doubleOrNothing && user.doubleOrNothing.active) {
+      if (streakUpdate?.streakBroken) {
+        user.gems = 0;
+        user.doubleOrNothing.active = false;
+        user.doubleOrNothing.lastResult = 'lost';
+        doubleOrNothingResult = {
+          status: 'lost'
+        };
+      } else if (user.currentStreak >= (user.doubleOrNothing.targetStreak || 0)) {
+        const bonus = user.doubleOrNothing.startGems || 0;
+        user.gems = (user.gems || 0) + bonus;
+        user.doubleOrNothing.active = false;
+        user.doubleOrNothing.lastResult = 'won';
+        doubleOrNothingResult = {
+          status: 'won',
+          bonus
+        };
+      }
+    }
+
     const unlockedAchievement = unlockedAchievements.length
       ? unlockedAchievements[unlockedAchievements.length - 1]
       : null;
@@ -443,15 +495,22 @@ router.post('/lesson-complete', auth, [
         longestStreak: user.longestStreak,
         gems: user.gems,
         hearts: user.hearts,
-        maxHearts: user.maxHearts
+        maxHearts: user.maxHearts,
+        xpBoosts: user.xpBoosts,
+        streakFreezes: user.streakFreezes,
+        streakShieldUntil: user.streakShieldUntil,
+        unlimitedHeartsUntil: user.unlimitedHeartsUntil,
+        doubleOrNothing: user.doubleOrNothing
       },
       rewards: {
         gemsEarned: gemsEarned + achievementGems + dailyQuestRewards.rewardGems,
-        xpEarned,
+        xpEarned: finalXp,
         achievementGems,
         questGems: dailyQuestRewards.rewardGems,
-        completedQuests: dailyQuestRewards.completed
+        completedQuests: dailyQuestRewards.completed,
+        xpBoostApplied
       },
+      doubleOrNothing: doubleOrNothingResult,
       unlockedAchievement,
       lesson: {
         completionCount: lesson.completionCount,
@@ -460,7 +519,7 @@ router.post('/lesson-complete', auth, [
       session: {
         accuracy,
         timeSpent,
-        xpEarned,
+        xpEarned: finalXp,
         questionsAnswered: questions.length,
         wasCompleted
       }

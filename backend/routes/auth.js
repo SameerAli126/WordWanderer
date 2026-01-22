@@ -26,6 +26,18 @@ const demoUser = {
   maxHearts: DEFAULT_MAX_HEARTS,
   heartsUpdatedAt: new Date(),
   streakFreezes: 0,
+  xpBoosts: 0,
+  streakShieldUntil: null,
+  unlimitedHeartsUntil: null,
+  superTrialUsed: false,
+  doubleOrNothing: {
+    active: false,
+    startedAt: null,
+    startStreak: 0,
+    targetStreak: 0,
+    startGems: DEFAULT_GEMS,
+    lastResult: null
+  },
   achievements: ['first_lesson', 'daily_login', 'week_streak'],
   currentLanguage: 'chinese',
   level: 8,
@@ -60,9 +72,23 @@ const generateRecoveryCode = () => {
   return `${Math.floor(100000000 + Math.random() * 900000000)}`;
 };
 
+const isUnlimitedHeartsActive = (user) => {
+  if (!user.unlimitedHeartsUntil) {
+    return false;
+  }
+  return new Date(user.unlimitedHeartsUntil).getTime() > Date.now();
+};
+
 const applyHeartRegen = (user) => {
   if (!user.heartsUpdatedAt) {
     user.heartsUpdatedAt = new Date();
+  }
+  if (isUnlimitedHeartsActive(user)) {
+    if (user.hearts !== user.maxHearts) {
+      user.hearts = user.maxHearts;
+    }
+    user.heartsUpdatedAt = new Date();
+    return true;
   }
   if (user.hearts >= user.maxHearts) {
     user.heartsUpdatedAt = new Date();
@@ -88,6 +114,9 @@ const applyHeartRegen = (user) => {
 
 const getHeartRegenInfo = (user) => {
   if (user.hearts >= user.maxHearts) {
+    return { nextInSeconds: 0, fullInSeconds: 0 };
+  }
+  if (isUnlimitedHeartsActive(user)) {
     return { nextInSeconds: 0, fullInSeconds: 0 };
   }
 
@@ -123,6 +152,33 @@ const ensureUserEconomy = async (user) => {
   }
   if (typeof user.streakFreezes !== 'number') {
     user.streakFreezes = 0;
+    changed = true;
+  }
+  if (user.streakShieldUntil === undefined) {
+    user.streakShieldUntil = null;
+    changed = true;
+  }
+  if (user.unlimitedHeartsUntil === undefined) {
+    user.unlimitedHeartsUntil = null;
+    changed = true;
+  }
+  if (typeof user.xpBoosts !== 'number') {
+    user.xpBoosts = 0;
+    changed = true;
+  }
+  if (typeof user.superTrialUsed !== 'boolean') {
+    user.superTrialUsed = false;
+    changed = true;
+  }
+  if (typeof user.doubleOrNothing !== 'object' || user.doubleOrNothing === null) {
+    user.doubleOrNothing = {
+      active: false,
+      startedAt: null,
+      startStreak: 0,
+      targetStreak: 0,
+      startGems: user.gems ?? DEFAULT_GEMS,
+      lastResult: null
+    };
     changed = true;
   }
 
@@ -201,11 +257,27 @@ router.post('/register', [
         maxHearts: DEFAULT_MAX_HEARTS,
         heartsUpdatedAt: new Date(),
         streakFreezes: 0,
+        xpBoosts: 0,
+        streakShieldUntil: null,
+        unlimitedHeartsUntil: null,
+        superTrialUsed: false,
+        doubleOrNothing: {
+          active: false,
+          startedAt: null,
+          startStreak: 0,
+          targetStreak: 0,
+          startGems: DEFAULT_GEMS,
+          lastResult: null
+        },
         level: 1,
         preferences: {
           dailyGoal: 10,
           soundEnabled: true,
           notificationsEnabled: true,
+          emailReminders: false,
+          dailyGoalReminder: true,
+          streakProtection: true,
+          reminderTime: null,
           theme: 'light',
           language: 'en'
         },
@@ -237,16 +309,21 @@ router.post('/register', [
           username: fallbackUser.username,
           displayName: fallbackUser.displayName,
           totalXP: fallbackUser.totalXP,
-          currentStreak: fallbackUser.currentStreak,
-          longestStreak: fallbackUser.longestStreak,
-          gems: fallbackUser.gems,
-          hearts: fallbackUser.hearts,
-          maxHearts: fallbackUser.maxHearts,
-          streakFreezes: fallbackUser.streakFreezes,
-          isDemo: true
-        },
-        recoveryCode,
-        token
+        currentStreak: fallbackUser.currentStreak,
+        longestStreak: fallbackUser.longestStreak,
+        gems: fallbackUser.gems,
+        hearts: fallbackUser.hearts,
+        maxHearts: fallbackUser.maxHearts,
+        streakFreezes: fallbackUser.streakFreezes,
+        xpBoosts: fallbackUser.xpBoosts,
+        streakShieldUntil: fallbackUser.streakShieldUntil,
+        unlimitedHeartsUntil: fallbackUser.unlimitedHeartsUntil,
+        superTrialUsed: fallbackUser.superTrialUsed,
+        doubleOrNothing: fallbackUser.doubleOrNothing,
+        isDemo: true
+      },
+      recoveryCode,
+      token
       });
     }
 
@@ -296,11 +373,16 @@ router.post('/register', [
         username: user.username,
         displayName: user.displayName,
         totalXP: user.totalXP,
-        currentStreak: user.currentStreak,
-        longestStreak: user.longestStreak,
-        gems: user.gems,
-        hearts: user.hearts,
-        maxHearts: user.maxHearts
+      currentStreak: user.currentStreak,
+      longestStreak: user.longestStreak,
+      gems: user.gems,
+      hearts: user.hearts,
+      maxHearts: user.maxHearts,
+      xpBoosts: user.xpBoosts,
+      streakShieldUntil: user.streakShieldUntil,
+      unlimitedHeartsUntil: user.unlimitedHeartsUntil,
+      superTrialUsed: user.superTrialUsed,
+      doubleOrNothing: user.doubleOrNothing
       },
       recoveryCode,
       token
@@ -417,6 +499,11 @@ router.post('/login', [
         hearts: user.hearts,
         maxHearts: user.maxHearts,
         streakFreezes: user.streakFreezes,
+        xpBoosts: user.xpBoosts,
+        streakShieldUntil: user.streakShieldUntil,
+        unlimitedHeartsUntil: user.unlimitedHeartsUntil,
+        superTrialUsed: user.superTrialUsed,
+        doubleOrNothing: user.doubleOrNothing,
         preferences: user.preferences,
         achievements: user.achievements,
         courses: user.courses
@@ -619,6 +706,11 @@ router.get('/me', auth, async (req, res) => {
         streakFreezes: user.streakFreezes,
         heartRegen,
         level: user.level,
+        xpBoosts: user.xpBoosts,
+        streakShieldUntil: user.streakShieldUntil,
+        unlimitedHeartsUntil: user.unlimitedHeartsUntil,
+        superTrialUsed: user.superTrialUsed,
+        doubleOrNothing: user.doubleOrNothing,
         preferences: user.preferences || {},
         achievements: user.achievements || [],
         courses: user.courses || [],

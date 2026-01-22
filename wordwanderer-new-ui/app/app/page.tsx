@@ -22,6 +22,15 @@ import { apiRequest, clearStoredToken, BALANCE_EVENT_NAME, BalanceUpdate } from 
 
 type ViewType = "learn" | "leaderboards" | "profile" | "characters" | "quests" | "shop" | "settings"
 
+const LANGUAGE_OPTIONS = [
+  { code: "zh", label: "Chinese", flagCode: "cn", progress: 75, isUnlocked: true },
+  { code: "es", label: "Spanish", flagCode: "es", progress: 45, isUnlocked: true },
+  { code: "fr", label: "French", flagCode: "fr", progress: 20, isUnlocked: true },
+  { code: "de", label: "German", flagCode: "de", progress: 0, isUnlocked: false },
+  { code: "ja", label: "Japanese", flagCode: "jp", progress: 0, isUnlocked: false },
+  { code: "ko", label: "Korean", flagCode: "kr", progress: 0, isUnlocked: false },
+]
+
 export default function DuolingoApp() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -36,6 +45,7 @@ export default function DuolingoApp() {
     hearts: 0,
     maxHearts: 5,
   })
+  const [activeLanguage, setActiveLanguage] = useState(LANGUAGE_OPTIONS[0])
   const { theme } = useTheme()
 
   useEffect(() => {
@@ -47,15 +57,28 @@ export default function DuolingoApp() {
 
   const loadUserStats = async () => {
     try {
-      const response = await apiRequest<{ user: { currentStreak: number; gems: number; hearts: number; maxHearts?: number } }>(
-        "/api/auth/me"
-      )
+      const response = await apiRequest<{
+        user: {
+          currentStreak: number
+          gems: number
+          hearts: number
+          maxHearts?: number
+          preferences?: { language?: string }
+        }
+      }>("/api/auth/me")
       setUserStats({
         currentStreak: response.user.currentStreak ?? 0,
         gems: response.user.gems ?? 0,
         hearts: response.user.hearts ?? 0,
         maxHearts: response.user.maxHearts ?? 5,
       })
+      const preferredLanguage = response.user.preferences?.language
+      if (preferredLanguage) {
+        const matched = LANGUAGE_OPTIONS.find((item) => item.code === preferredLanguage)
+        if (matched) {
+          setActiveLanguage(matched)
+        }
+      }
     } catch (error) {
       const status = error instanceof Error ? (error as Error & { status?: number }).status : undefined
       if (status === 401) {
@@ -119,9 +142,19 @@ export default function DuolingoApp() {
     }
   }
 
-  const handleLanguageChange = (language: string) => {
-    console.log(`Switching to language: ${language}`)
-    // Here you would implement language switching logic
+  const handleLanguageChange = async (language: string) => {
+    const nextLanguage = LANGUAGE_OPTIONS.find((item) => item.code === language)
+    if (nextLanguage) {
+      setActiveLanguage(nextLanguage)
+    }
+    try {
+      await apiRequest("/api/users/preferences", {
+        method: "PUT",
+        body: JSON.stringify({ language }),
+      })
+    } catch (error) {
+      console.error("Failed to update language preference:", error)
+    }
   }
 
   const handleLogout = async () => {
@@ -195,6 +228,7 @@ export default function DuolingoApp() {
         onLanguageClick={() => setShowLanguageSwitcher(true)}
         onNotificationClick={() => setShowStudyReminder(true)}
         onLogout={handleLogout}
+        language={activeLanguage}
         stats={userStats}
       />
       <div className="flex flex-col lg:flex-row">
@@ -215,6 +249,8 @@ export default function DuolingoApp() {
         isOpen={showLanguageSwitcher}
         onClose={() => setShowLanguageSwitcher(false)}
         onLanguageChange={handleLanguageChange}
+        activeLanguageCode={activeLanguage.code}
+        languages={LANGUAGE_OPTIONS}
       />
 
       <StudyReminder isOpen={showStudyReminder} onClose={() => setShowStudyReminder(false)} />

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
-import { X, Volume2, CheckCircle, XCircle, Heart } from "lucide-react"
+import { X, Volume2, CheckCircle, XCircle, Heart, Infinity } from "lucide-react"
 import type { Lesson, LessonQuestion } from "@/types/lesson"
 import { apiRequest, emitBalanceUpdate } from "@/lib/api"
 
@@ -23,6 +23,18 @@ interface LessonCompletionResponse {
     gems?: number
     hearts?: number
     maxHearts?: number
+    xpBoosts?: number
+    streakFreezes?: number
+    streakShieldUntil?: string | null
+    unlimitedHeartsUntil?: string | null
+    doubleOrNothing?: {
+      active: boolean
+      startedAt?: string | null
+      startStreak?: number
+      targetStreak?: number
+      startGems?: number
+      lastResult?: "won" | "lost" | null
+    }
   }
   rewards?: {
     gemsEarned?: number
@@ -101,10 +113,12 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
   const [isCorrect, setIsCorrect] = useState(false)
   const [hearts, setHearts] = useState(0)
   const [maxHearts, setMaxHearts] = useState(5)
+  const [unlimitedHeartsUntil, setUnlimitedHeartsUntil] = useState<string | null>(null)
   const [matchSelection, setMatchSelection] = useState<{ left?: string; right?: string }>({})
   const [matchPairs, setMatchPairs] = useState<Record<string, string>>({})
   const [matchError, setMatchError] = useState("")
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [audioError, setAudioError] = useState<string | null>(null)
   const [speechScore, setSpeechScore] = useState<SpeechScoreResponse | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const resultsRef = useRef<
@@ -163,9 +177,12 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
   useEffect(() => {
     const loadHearts = async () => {
       try {
-        const response = await apiRequest<{ user: { hearts?: number; maxHearts?: number } }>("/api/auth/me")
+        const response = await apiRequest<{ user: { hearts?: number; maxHearts?: number; unlimitedHeartsUntil?: string | null } }>(
+          "/api/auth/me"
+        )
         setHearts(response.user.hearts ?? 0)
         setMaxHearts(response.user.maxHearts ?? 5)
+        setUnlimitedHeartsUntil(response.user.unlimitedHeartsUntil ?? null)
       } catch (error) {
         console.error("Failed to load hearts:", error)
       }
@@ -178,7 +195,14 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
     router.push("/app?view=learn")
   }
 
+  const unlimitedHeartsActive = unlimitedHeartsUntil
+    ? new Date(unlimitedHeartsUntil).getTime() > Date.now()
+    : false
+
   const spendHeart = async () => {
+    if (unlimitedHeartsActive) {
+      return
+    }
     try {
       const response = await apiRequest<HeartUpdateResponse>("/api/users/hearts/use", {
         method: "POST",
@@ -190,6 +214,25 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Unable to update hearts.")
     }
+  }
+
+  const handlePlayAudio = () => {
+    setAudioError(null)
+    if (currentQuestion?.audio) {
+      const audio = new Audio(currentQuestion.audio)
+      audio.play().catch(() => setAudioError("Audio playback failed."))
+      return
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      const utterance = new SpeechSynthesisUtterance(
+        currentQuestion?.context || currentQuestion?.prompt || "Listen and repeat."
+      )
+      utterance.lang = "zh-CN"
+      window.speechSynthesis.cancel()
+      window.speechSynthesis.speak(utterance)
+      return
+    }
+    setAudioError("Audio is not available on this device.")
   }
 
   const handleMatchSelection = (nextLeft?: string, nextRight?: string) => {
@@ -366,6 +409,17 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
           ...(typeof response.user.gems === "number" ? { gems: response.user.gems } : {}),
           ...(typeof response.user.hearts === "number" ? { hearts: response.user.hearts } : {}),
           ...(typeof response.user.maxHearts === "number" ? { maxHearts: response.user.maxHearts } : {}),
+          ...(typeof response.user.xpBoosts === "number" ? { xpBoosts: response.user.xpBoosts } : {}),
+          ...(typeof response.user.streakFreezes === "number" ? { streakFreezes: response.user.streakFreezes } : {}),
+          ...(typeof response.user.streakShieldUntil !== "undefined"
+            ? { streakShieldUntil: response.user.streakShieldUntil ?? null }
+            : {}),
+          ...(typeof response.user.unlimitedHeartsUntil !== "undefined"
+            ? { unlimitedHeartsUntil: response.user.unlimitedHeartsUntil ?? null }
+            : {}),
+          ...(typeof response.user.doubleOrNothing !== "undefined"
+            ? { doubleOrNothing: response.user.doubleOrNothing }
+            : {}),
         }
         emitBalanceUpdate(detail)
       }
@@ -422,6 +476,7 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
               />
             ))}
           </div>
+          {unlimitedHeartsActive && <Infinity className="w-4 h-4 text-emerald-300" />}
         </div>
       </div>
 
@@ -432,11 +487,12 @@ export function LessonInterface({ lesson }: LessonInterfaceProps) {
               <h2 className="text-2xl font-bold mb-2">{currentQuestion.prompt}</h2>
               {currentQuestion.context && <p className="text-slate-300">{currentQuestion.context}</p>}
               {isAudioQuestion && (
-                <Button variant="outline" className="mb-4 bg-transparent">
+                <Button variant="outline" className="mb-4 bg-transparent" onClick={handlePlayAudio}>
                   <Volume2 className="w-5 h-5 mr-2" />
                   Play Audio
                 </Button>
               )}
+              {audioError && <p className="text-sm text-red-300">{audioError}</p>}
             </div>
 
             {isMatchQuestion ? (

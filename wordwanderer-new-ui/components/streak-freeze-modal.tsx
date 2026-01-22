@@ -45,13 +45,11 @@ export function StreakFreezeModal({ isOpen, onClose, currentStreak, gems }: Stre
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Current Streak Display */}
           <div className="text-center p-6 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-lg border border-orange-500/30">
             <div className="text-4xl font-bold text-orange-400 mb-2">{currentStreak}</div>
-            <div className="text-sm text-slate-300">Day Streak 🔥</div>
+            <div className="text-sm text-slate-300">Day Streak</div>
           </div>
 
-          {/* Protection Info */}
           <div className="space-y-4">
             <div className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-lg">
               <Shield className="w-5 h-5 text-blue-400 mt-0.5" />
@@ -72,7 +70,6 @@ export function StreakFreezeModal({ isOpen, onClose, currentStreak, gems }: Stre
             </div>
           </div>
 
-          {/* Purchase Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-600">
               <div className="flex items-center gap-2">
@@ -88,7 +85,6 @@ export function StreakFreezeModal({ isOpen, onClose, currentStreak, gems }: Stre
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-3">
             <Button
               variant="outline"

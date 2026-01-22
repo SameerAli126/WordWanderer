@@ -1,11 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { useTheme } from "@/contexts/theme-context"
+import { apiRequest } from "@/lib/api"
+import { toast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 import {
   SettingsIcon,
   Palette,
@@ -22,9 +25,60 @@ import {
 
 export function Settings() {
   const { theme, setTheme } = useTheme()
+  const router = useRouter()
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [volume, setVolume] = useState([75])
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const savePreferences = async (payload: Record<string, unknown>) => {
+    setIsSaving(true)
+    setError(null)
+    try {
+      await apiRequest("/api/users/preferences", {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      })
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : "Unable to save settings."
+      setError(message)
+      toast({ title: "Settings not saved", description: message })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const response = await apiRequest<{
+          user: {
+            preferences?: {
+              soundEnabled?: boolean
+              notificationsEnabled?: boolean
+              theme?: string
+            }
+          }
+        }>("/api/auth/me")
+        const prefs = response.user.preferences || {}
+        if (typeof prefs.soundEnabled === "boolean") {
+          setSoundEnabled(prefs.soundEnabled)
+        }
+        if (typeof prefs.notificationsEnabled === "boolean") {
+          setNotificationsEnabled(prefs.notificationsEnabled)
+        }
+        if (prefs.theme && prefs.theme !== theme) {
+          setTheme(prefs.theme as typeof theme)
+        }
+      } catch (loadError) {
+        const message = loadError instanceof Error ? loadError.message : "Unable to load settings."
+        setError(message)
+      }
+    }
+
+    void loadPreferences()
+  }, [setTheme, theme])
 
   const themeOptions = [
     {
@@ -126,7 +180,10 @@ export function Settings() {
                           ? "border-gray-200 hover:border-gray-300"
                           : "border-slate-600 hover:border-slate-500"
                     }`}
-                    onClick={() => setTheme(option.id)}
+                    onClick={() => {
+                      setTheme(option.id)
+                      void savePreferences({ theme: option.id })
+                    }}
                   >
                     <div className={`w-12 h-8 rounded-md ${option.preview} border-2 border-white/20`}></div>
                     <div className="text-center">
@@ -165,7 +222,13 @@ export function Settings() {
                     Enable audio feedback for interactions
                   </div>
                 </div>
-                <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} />
+                <Switch
+                  checked={soundEnabled}
+                  onCheckedChange={(checked) => {
+                    setSoundEnabled(checked)
+                    void savePreferences({ soundEnabled: checked })
+                  }}
+                />
               </div>
 
               <div className="space-y-3">
@@ -206,7 +269,13 @@ export function Settings() {
                     Get reminded to practice daily
                   </div>
                 </div>
-                <Switch checked={notificationsEnabled} onCheckedChange={setNotificationsEnabled} />
+                <Switch
+                  checked={notificationsEnabled}
+                  onCheckedChange={(checked) => {
+                    setNotificationsEnabled(checked)
+                    void savePreferences({ notificationsEnabled: checked })
+                  }}
+                />
               </div>
             </CardContent>
           </Card>
@@ -230,6 +299,7 @@ export function Settings() {
                 className={`w-full justify-start ${
                   theme === "light" ? "border-gray-200 hover:bg-gray-50" : "border-slate-600 hover:bg-slate-700"
                 }`}
+                onClick={() => router.push("/app?view=profile")}
               >
                 <User className="w-4 h-4 mr-3" />
                 Edit Profile
@@ -239,6 +309,12 @@ export function Settings() {
                 className={`w-full justify-start ${
                   theme === "light" ? "border-gray-200 hover:bg-gray-50" : "border-slate-600 hover:bg-slate-700"
                 }`}
+                onClick={() =>
+                  toast({
+                    title: "Language preferences",
+                    description: "Use the language switcher in the header to change courses.",
+                  })
+                }
               >
                 <Globe className="w-4 h-4 mr-3" />
                 Language Preferences
@@ -248,6 +324,7 @@ export function Settings() {
                 className={`w-full justify-start ${
                   theme === "light" ? "border-gray-200 hover:bg-gray-50" : "border-slate-600 hover:bg-slate-700"
                 }`}
+                onClick={() => router.push("/privacy")}
               >
                 <Shield className="w-4 h-4 mr-3" />
                 Privacy Settings
@@ -274,6 +351,7 @@ export function Settings() {
                 className={`w-full justify-start ${
                   theme === "light" ? "border-gray-200 hover:bg-gray-50" : "border-slate-600 hover:bg-slate-700"
                 }`}
+                onClick={() => router.push("/about")}
               >
                 Help Center
               </Button>
@@ -282,6 +360,7 @@ export function Settings() {
                 className={`w-full justify-start ${
                   theme === "light" ? "border-gray-200 hover:bg-gray-50" : "border-slate-600 hover:bg-slate-700"
                 }`}
+                onClick={() => (window.location.href = "mailto:support@wordwanderer.app")}
               >
                 Contact Support
               </Button>
@@ -290,12 +369,19 @@ export function Settings() {
                 className={`w-full justify-start ${
                   theme === "light" ? "border-gray-200 hover:bg-gray-50" : "border-slate-600 hover:bg-slate-700"
                 }`}
+                onClick={() => (window.location.href = "mailto:feedback@wordwanderer.app")}
               >
                 Send Feedback
               </Button>
             </CardContent>
           </Card>
         </div>
+        {error && (
+          <div className="mt-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-red-200">
+            {error}
+          </div>
+        )}
+        {isSaving && <p className="mt-2 text-sm text-slate-400">Saving changes...</p>}
       </div>
     </div>
   )

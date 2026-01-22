@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Bell, Clock, Smartphone, Mail } from "lucide-react"
+import { apiRequest } from "@/lib/api"
 
 interface StudyReminderProps {
   isOpen: boolean
@@ -19,15 +20,69 @@ export function StudyReminder({ isOpen, onClose }: StudyReminderProps) {
     streakProtection: true,
     reminderTime: "19:00",
   })
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSettingChange = (key: string, value: boolean) => {
     setSettings((prev) => ({ ...prev, [key]: value }))
   }
 
-  const handleSave = () => {
-    // Save settings logic here
-    console.log("Saving reminder settings:", settings)
-    onClose()
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    const loadPreferences = async () => {
+      try {
+        const response = await apiRequest<{
+          user: {
+            preferences?: {
+              notificationsEnabled?: boolean
+              emailReminders?: boolean
+              dailyGoalReminder?: boolean
+              streakProtection?: boolean
+              reminderTime?: string | null
+            }
+          }
+        }>("/api/auth/me")
+        const prefs = response.user.preferences || {}
+        setSettings((prev) => ({
+          ...prev,
+          pushNotifications: prefs.notificationsEnabled ?? prev.pushNotifications,
+          emailReminders: prefs.emailReminders ?? prev.emailReminders,
+          dailyGoalReminder: prefs.dailyGoalReminder ?? prev.dailyGoalReminder,
+          streakProtection: prefs.streakProtection ?? prev.streakProtection,
+          reminderTime: prefs.reminderTime ?? prev.reminderTime,
+        }))
+        setError(null)
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load reminder settings.")
+      }
+    }
+
+    void loadPreferences()
+  }, [isOpen])
+
+  const handleSave = async () => {
+    setIsSaving(true)
+    setError(null)
+    try {
+      await apiRequest("/api/users/preferences", {
+        method: "PUT",
+        body: JSON.stringify({
+          notificationsEnabled: settings.pushNotifications,
+          emailReminders: settings.emailReminders,
+          dailyGoalReminder: settings.dailyGoalReminder,
+          streakProtection: settings.streakProtection,
+          reminderTime: settings.reminderTime,
+        }),
+      })
+      onClose()
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Unable to save reminder settings.")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -41,7 +96,6 @@ export function StudyReminder({ isOpen, onClose }: StudyReminderProps) {
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Reminder Time */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-blue-400" />
@@ -50,12 +104,11 @@ export function StudyReminder({ isOpen, onClose }: StudyReminderProps) {
             <input
               type="time"
               value={settings.reminderTime}
-              onChange={(e) => setSettings((prev) => ({ ...prev, reminderTime: e.target.value }))}
+              onChange={(event) => setSettings((prev) => ({ ...prev, reminderTime: event.target.value }))}
               className="w-full p-2 bg-slate-800 border border-slate-600 rounded-lg text-white"
             />
           </div>
 
-          {/* Notification Settings */}
           <div className="space-y-4">
             <h3 className="font-semibold text-white">Notification Types</h3>
 
@@ -118,22 +171,24 @@ export function StudyReminder({ isOpen, onClose }: StudyReminderProps) {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-3">
             <Button
               variant="outline"
               onClick={onClose}
               className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
+              disabled={isSaving}
             >
               Cancel
             </Button>
             <Button
               onClick={handleSave}
               className="flex-1 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-400 hover:to-blue-500 text-white"
+              disabled={isSaving}
             >
-              Save Settings
+              {isSaving ? "Saving..." : "Save Settings"}
             </Button>
           </div>
+          {error && <p className="text-sm text-red-300 text-center">{error}</p>}
         </div>
       </DialogContent>
     </Dialog>

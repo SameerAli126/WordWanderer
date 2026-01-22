@@ -15,51 +15,106 @@ const connectDB = async () => {
 };
 
 const speakingTemplates = {
-  'Basic Greetings': {
-    prompt: 'Say this greeting aloud:',
-    text: 'ni3 hao3',
-    expected: 'ni3 hao3',
-    explanation: 'Practice saying hello in Mandarin using tone numbers.',
-    hints: ['Say "nee how" with tones: ni3 hao3.'],
-    xpReward: 20,
-    difficulty: 'easy'
-  },
-  'Time of Day Greetings': {
-    prompt: 'Say the morning greeting:',
-    text: 'zao3 shang4 hao3',
-    expected: 'zao3 shang4 hao3',
-    explanation: 'Use the morning greeting with tone numbers.',
-    hints: ['Focus on zao3 shang4 hao3.'],
-    xpReward: 20,
-    difficulty: 'easy'
-  },
-  'Numbers 1-10': {
-    prompt: 'Say the numbers 1 to 4:',
-    text: 'yi1 er4 san1 si4',
-    expected: 'yi1 er4 san1 si4',
-    explanation: 'Practice the first four numbers with tone numbers.',
-    hints: ['Say yi1 er4 san1 si4 clearly.'],
-    xpReward: 20,
-    difficulty: 'easy'
-  },
-  'Telling Time': {
-    prompt: 'Ask "What time is it?" aloud:',
-    text: 'xian4 zai4 ji3 dian3',
-    expected: 'xian4 zai4 ji3 dian3',
-    explanation: 'Practice the time question in Mandarin.',
-    hints: ['Say xian4 zai4 ji3 dian3.'],
-    xpReward: 25,
-    difficulty: 'medium'
-  },
-  'Family Members': {
-    prompt: 'Say "mother" aloud:',
-    text: 'ma1 ma',
-    expected: 'ma1 ma',
-    explanation: 'Practice the word for mother in Mandarin.',
-    hints: ['Say ma1 ma with a steady first tone.'],
-    xpReward: 20,
-    difficulty: 'easy'
-  }
+  'Basic Greetings': [
+    {
+      prompt: 'Say this greeting aloud:',
+      text: 'ni3 hao3',
+      expected: 'ni3 hao3',
+      explanation: 'Practice saying hello in Mandarin using tone numbers.',
+      hints: ['Say "nee how" with tones: ni3 hao3.'],
+      xpReward: 20,
+      difficulty: 'easy'
+    },
+    {
+      prompt: 'Say "Goodbye" aloud:',
+      text: 'zai4 jian4',
+      expected: 'zai4 jian4',
+      explanation: 'Practice saying goodbye with the correct tones.',
+      hints: ['Say zai4 jian4 clearly.'],
+      xpReward: 20,
+      difficulty: 'easy'
+    }
+  ],
+  'Time of Day Greetings': [
+    {
+      prompt: 'Say the morning greeting:',
+      text: 'zao3 shang4 hao3',
+      expected: 'zao3 shang4 hao3',
+      explanation: 'Use the morning greeting with tone numbers.',
+      hints: ['Focus on zao3 shang4 hao3.'],
+      xpReward: 20,
+      difficulty: 'easy'
+    },
+    {
+      prompt: 'Say the evening greeting:',
+      text: 'wan3 shang4 hao3',
+      expected: 'wan3 shang4 hao3',
+      explanation: 'Practice the evening greeting with tone numbers.',
+      hints: ['Say wan3 shang4 hao3.'],
+      xpReward: 20,
+      difficulty: 'easy'
+    }
+  ],
+  'Numbers 1-10': [
+    {
+      prompt: 'Say the numbers 1 to 4:',
+      text: 'yi1 er4 san1 si4',
+      expected: 'yi1 er4 san1 si4',
+      explanation: 'Practice the first four numbers with tone numbers.',
+      hints: ['Say yi1 er4 san1 si4 clearly.'],
+      xpReward: 20,
+      difficulty: 'easy'
+    },
+    {
+      prompt: 'Say the numbers 5 to 8:',
+      text: 'wu3 liu4 qi1 ba1',
+      expected: 'wu3 liu4 qi1 ba1',
+      explanation: 'Practice the next set of numbers with tone numbers.',
+      hints: ['Say wu3 liu4 qi1 ba1.'],
+      xpReward: 20,
+      difficulty: 'easy'
+    }
+  ],
+  'Telling Time': [
+    {
+      prompt: 'Ask "What time is it?" aloud:',
+      text: 'xian4 zai4 ji3 dian3',
+      expected: 'xian4 zai4 ji3 dian3',
+      explanation: 'Practice the time question in Mandarin.',
+      hints: ['Say xian4 zai4 ji3 dian3.'],
+      xpReward: 25,
+      difficulty: 'medium'
+    },
+    {
+      prompt: 'Say "It is two o\'clock" aloud:',
+      text: 'xian4 zai4 liang3 dian3',
+      expected: 'xian4 zai4 liang3 dian3',
+      explanation: 'Practice a simple time statement in Mandarin.',
+      hints: ['Say xian4 zai4 liang3 dian3.'],
+      xpReward: 25,
+      difficulty: 'medium'
+    }
+  ],
+  'Family Members': [
+    {
+      prompt: 'Say "mother" aloud:',
+      text: 'ma1 ma',
+      expected: 'ma1 ma',
+      explanation: 'Practice the word for mother in Mandarin.',
+      hints: ['Say ma1 ma with a steady first tone.'],
+      xpReward: 20,
+      difficulty: 'easy'
+    },
+    {
+      prompt: 'Say "father" aloud:',
+      text: 'ba4 ba',
+      expected: 'ba4 ba',
+      explanation: 'Practice the word for father in Mandarin.',
+      hints: ['Say ba4 ba with the fourth tone.'],
+      xpReward: 20,
+      difficulty: 'easy'
+    }
+  ]
 };
 
 const buildSpeakingQuestion = (template, order = 0) => ({
@@ -81,18 +136,21 @@ const ensureSpeakingQuestions = async (courseId) => {
   let updatedCount = 0;
 
   for (const lesson of lessons) {
-    const template = speakingTemplates[lesson.title];
-    if (!template) {
+    const templates = speakingTemplates[lesson.title] || [];
+    if (!templates.length) {
       continue;
     }
 
-    const hasSpeech = (lesson.questions || []).some((question) => question.type === 'speaking');
-    if (hasSpeech) {
+    const existingSpeech = (lesson.questions || []).filter((question) => question.type === 'speaking');
+    if (existingSpeech.length >= templates.length) {
       continue;
     }
 
-    const speakingQuestion = buildSpeakingQuestion(template);
-    lesson.questions.unshift(speakingQuestion);
+    const missingTemplates = templates.slice(existingSpeech.length);
+    const orderBase = existingSpeech.length;
+    for (let i = missingTemplates.length - 1; i >= 0; i -= 1) {
+      lesson.questions.unshift(buildSpeakingQuestion(missingTemplates[i], orderBase + i));
+    }
     await lesson.save();
     updatedCount += 1;
   }
@@ -470,15 +528,18 @@ const seedChineseCourse = async () => {
 
     // Ensure speaking questions are prominent in each lesson
     chineseLessons.forEach((lesson) => {
-      const template = speakingTemplates[lesson.title];
-      if (!template) {
+      const templates = speakingTemplates[lesson.title] || [];
+      if (!templates.length) {
         return;
       }
-      const hasSpeech = (lesson.questions || []).some((question) => question.type === 'speaking');
-      if (hasSpeech) {
+      const existingSpeech = (lesson.questions || []).filter((question) => question.type === 'speaking');
+      if (existingSpeech.length >= templates.length) {
         return;
       }
-      lesson.questions.unshift(buildSpeakingQuestion(template));
+      const orderBase = existingSpeech.length;
+      for (let i = templates.length - 1; i >= 0; i -= 1) {
+        lesson.questions.unshift(buildSpeakingQuestion(templates[i], orderBase + i));
+      }
     });
 
     // Create lessons

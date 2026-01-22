@@ -10,6 +10,11 @@ interface HeaderProps {
   onLanguageClick?: () => void
   onNotificationClick?: () => void
   onLogout?: () => void
+  language?: {
+    code: string
+    label: string
+    flagCode: string
+  }
   stats?: {
     currentStreak?: number
     gems?: number
@@ -26,6 +31,7 @@ export function Header({
   onLanguageClick,
   onNotificationClick,
   onLogout,
+  language,
   stats,
 }: HeaderProps) {
   const { theme } = useTheme()
@@ -98,10 +104,7 @@ export function Header({
       : "border-slate-700/60 text-slate-200 hover:bg-slate-800/70"
   }
 
-  const activeLanguage = {
-    flagCode: "cn",
-    label: "Chinese",
-  }
+  const activeLanguage = language ?? { code: "zh", flagCode: "cn", label: "Chinese" }
 
   return (
     <header className={`${getHeaderClasses()} px-5 py-3 sticky top-0 z-40`}>
