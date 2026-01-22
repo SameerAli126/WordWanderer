@@ -1,6 +1,10 @@
+"use client"
+
+import { useEffect, useMemo, useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
-import { Flame, ChevronDown } from "lucide-react"
+import { ChevronDown, Flame } from "lucide-react"
+import { apiRequest } from "@/lib/api"
 
 const leagueShields = [
   { color: "bg-slate-300", active: false },
@@ -12,7 +16,7 @@ const leagueShields = [
   { color: "bg-slate-600", active: false },
 ]
 
-const leaderboardData = [
+const fallbackLeaderboard = [
   {
     rank: 13,
     name: "Carolina Kostina",
@@ -70,6 +74,103 @@ const leaderboardData = [
 ]
 
 export function Leaderboard() {
+  const [entries, setEntries] = useState<Array<{
+    userId?: string
+    rank: number
+    name: string
+    xp: number
+    streak?: number
+    avatar?: string | null
+    isCurrentUser?: boolean
+  }>>([])
+  const [currentUser, setCurrentUser] = useState<{
+    userId?: string
+    rank: number
+    name: string
+    xp: number
+    streak?: number
+    avatar?: string | null
+    isCurrentUser?: boolean
+  } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const fetchLeaderboard = async () => {
+      try {
+        const data = await apiRequest<{
+          success: boolean
+          entries: Array<{
+            userId: string
+            rank: number
+            name: string
+            xp: number
+            streak: number
+            avatar?: string | null
+            isCurrentUser?: boolean
+          }>
+          currentUser?: {
+            userId: string
+            rank: number
+            name: string
+            xp: number
+            streak: number
+            avatar?: string | null
+            isCurrentUser?: boolean
+          } | null
+        }>("/api/leaderboard")
+
+        if (!cancelled) {
+          setEntries(data.entries ?? [])
+          setCurrentUser(data.currentUser ?? null)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setEntries([])
+          setCurrentUser(null)
+        }
+      }
+    }
+
+    fetchLeaderboard()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const leaderboardData = useMemo(() => {
+    if (entries.length === 0) {
+      return fallbackLeaderboard
+    }
+
+    const formatted = entries.map((entry) => ({
+      rank: entry.rank,
+      name: entry.name,
+      xp: entry.xp,
+      avatar: entry.avatar,
+      streak: entry.streak ? `${entry.streak} days` : null,
+      isCurrentUser: entry.isCurrentUser,
+    }))
+
+    if (currentUser && !entries.some((entry) => entry.userId === currentUser.userId)) {
+      formatted.push({
+        rank: currentUser.rank,
+        name: currentUser.name,
+        xp: currentUser.xp,
+        avatar: currentUser.avatar,
+        streak: currentUser.streak ? `${currentUser.streak} days` : null,
+        isCurrentUser: true,
+      })
+    }
+
+    const demotionStart = Math.max(formatted.length - 3, 0)
+    return formatted.map((entry, index) => ({
+      ...entry,
+      isDemotion: index >= demotionStart,
+    }))
+  }, [currentUser, entries])
+
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6">
       {/* League Shields */}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { LeagueInfo } from "./league-info"
 import { DailyQuests } from "./daily-quests"
 import { QuestProgress } from "./quest-progress"
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChevronUp, ChevronDown, Trophy, Target, Users, Calendar } from "lucide-react"
 import { useTheme } from "@/contexts/theme-context"
+import { apiRequest } from "@/lib/api"
 
 interface RightPanelProps {
   onNavigate?: (view: string) => void
@@ -16,6 +17,11 @@ interface RightPanelProps {
 
 export function RightPanel({ onNavigate }: RightPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [dailyStats, setDailyStats] = useState({
+    lessonsCompleted: 0,
+    xpEarned: 0,
+    timeStudiedSeconds: 0,
+  })
   const { theme } = useTheme()
 
   const getPanelClasses = () => {
@@ -62,6 +68,33 @@ export function RightPanel({ onNavigate }: RightPanelProps) {
     }
   }
 
+  useEffect(() => {
+    let cancelled = false
+
+    const loadDailyStats = async () => {
+      try {
+        const response = await apiRequest<{
+          daily: { lessonsCompleted: number; xpEarned: number; timeStudiedSeconds: number }
+        }>("/api/progress/daily-stats")
+        if (!cancelled) {
+          setDailyStats(response.daily)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load daily stats:", error)
+        }
+      }
+    }
+
+    loadDailyStats()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const timeMinutes = Math.round(dailyStats.timeStudiedSeconds / 60)
+
   return (
     <aside className={`${getPanelClasses()} order-first lg:order-last`}>
       <div className="p-4 h-full flex flex-col">
@@ -107,15 +140,15 @@ export function RightPanel({ onNavigate }: RightPanelProps) {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className={theme === "light" ? "text-gray-600" : "text-slate-400"}>Lessons completed</span>
-                    <span className="font-medium">3</span>
+                    <span className="font-medium">{dailyStats.lessonsCompleted}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className={theme === "light" ? "text-gray-600" : "text-slate-400"}>XP earned</span>
-                    <span className="font-medium text-emerald-400">+750</span>
+                    <span className="font-medium text-emerald-400">+{dailyStats.xpEarned}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className={theme === "light" ? "text-gray-600" : "text-slate-400"}>Time studied</span>
-                    <span className="font-medium">25 min</span>
+                    <span className="font-medium">{timeMinutes} min</span>
                   </div>
                 </div>
               </div>

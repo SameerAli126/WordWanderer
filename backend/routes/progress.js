@@ -4,6 +4,10 @@ const User = require('../models/User');
 const Lesson = require('../models/Lesson');
 const Course = require('../models/Course');
 const { auth } = require('../middleware/auth');
+const {
+  applyDailyQuestRewards,
+  ensureDailyStats
+} = require('../lib/dailyQuests');
 
 const router = express.Router();
 
@@ -66,17 +70,6 @@ const DAILY_QUEST_ACHIEVEMENT = {
   xpReward: 80,
   gemReward: 60,
   maxProgress: 3
-};
-
-const isSameDay = (left, right) => {
-  if (!left || !right) {
-    return false;
-  }
-  return (
-    left.getFullYear() === right.getFullYear() &&
-    left.getMonth() === right.getMonth() &&
-    left.getDate() === right.getDate()
-  );
 };
 
 const upsertAchievement = (user, data, progressValue, shouldUnlock, unlockedAt) => {
@@ -214,16 +207,19 @@ router.post('/lesson-complete', auth, [
     const unitId = lesson.unitId;
     const completedAt = new Date();
 
+    ensureDailyStats(user, completedAt);
     if (typeof user.dailyLessonCount !== 'number') {
       user.dailyLessonCount = 0;
     }
-    const lastLessonDate = user.dailyLessonDate ? new Date(user.dailyLessonDate) : null;
-    if (!lastLessonDate || !isSameDay(lastLessonDate, completedAt)) {
-      user.dailyLessonDate = completedAt;
-      user.dailyLessonCount = 1;
-    } else {
-      user.dailyLessonCount += 1;
+    if (typeof user.dailyXP !== 'number') {
+      user.dailyXP = 0;
     }
+    if (typeof user.dailyStudySeconds !== 'number') {
+      user.dailyStudySeconds = 0;
+    }
+    user.dailyLessonCount += 1;
+    user.dailyXP += xpEarned;
+    user.dailyStudySeconds += timeSpent;
 
     // Ensure user is enrolled in the course
     let courseProgress = user.courses.find(
@@ -421,6 +417,11 @@ router.post('/lesson-complete', auth, [
       user.gems = (user.gems || 0) + achievementGems;
     }
 
+    const dailyQuestRewards = applyDailyQuestRewards(user, completedAt);
+    if (dailyQuestRewards.rewardGems > 0) {
+      user.gems = (user.gems || 0) + dailyQuestRewards.rewardGems;
+    }
+
     const unlockedAchievement = unlockedAchievements.length
       ? unlockedAchievements[unlockedAchievements.length - 1]
       : null;
@@ -445,9 +446,11 @@ router.post('/lesson-complete', auth, [
         maxHearts: user.maxHearts
       },
       rewards: {
-        gemsEarned: gemsEarned + achievementGems,
+        gemsEarned: gemsEarned + achievementGems + dailyQuestRewards.rewardGems,
         xpEarned,
-        achievementGems
+        achievementGems,
+        questGems: dailyQuestRewards.rewardGems,
+        completedQuests: dailyQuestRewards.completed
       },
       unlockedAchievement,
       lesson: {
@@ -526,6 +529,13 @@ router.post('/practice-complete', auth, [
       user.hearts = user.maxHearts || 5;
     }
 
+    const completedAt = new Date();
+    ensureDailyStats(user, completedAt);
+    if (typeof user.dailyStudySeconds !== 'number') {
+      user.dailyStudySeconds = 0;
+    }
+    user.dailyStudySeconds += timeSpent;
+
     user.practiceSessions.push({
       practiceType,
       mode,
@@ -533,15 +543,24 @@ router.post('/practice-complete', auth, [
       correctAnswers,
       accuracy,
       timeSpent,
-      completedAt: new Date()
+      completedAt
     });
+
+    const dailyQuestRewards = applyDailyQuestRewards(user, completedAt);
+    if (dailyQuestRewards.rewardGems > 0) {
+      user.gems = (user.gems || 0) + dailyQuestRewards.rewardGems;
+    }
 
     await user.updateLastActive();
     await user.save();
 
     res.json({
       success: true,
-      message: 'Practice session recorded successfully'
+      message: 'Practice session recorded successfully',
+      rewards: {
+        questGems: dailyQuestRewards.rewardGems,
+        completedQuests: dailyQuestRewards.completed
+      }
     });
   } catch (error) {
     console.error('Record practice completion error:', error);
@@ -750,6 +769,41 @@ router.get('/stats', auth, async (req, res) => {
 
   } catch (error) {
     console.error('Get progress stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// @route   GET /api/progress/daily-stats
+// @desc    Get daily progress stats for the user
+// @access  Private
+router.get('/daily-stats', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const now = new Date();
+    ensureDailyStats(user, now);
+    await user.save();
+
+    res.json({
+      success: true,
+      daily: {
+        lessonsCompleted: user.dailyLessonCount || 0,
+        xpEarned: user.dailyXP || 0,
+        timeStudiedSeconds: user.dailyStudySeconds || 0
+      }
+    });
+  } catch (error) {
+    console.error('Get daily stats error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

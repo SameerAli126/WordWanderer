@@ -351,6 +351,28 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  dailyXP: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  dailyStudySeconds: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  dailyQuestCompletions: [
+    {
+      questId: {
+        type: String,
+        required: true
+      },
+      completedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }
+  ],
   streakFreezes: {
     type: Number,
     default: 0,

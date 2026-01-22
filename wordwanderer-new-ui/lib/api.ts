@@ -7,6 +7,7 @@ export type BalanceUpdate = {
   hearts?: number
   maxHearts?: number
   currentStreak?: number
+  streakFreezes?: number
 }
 
 export const getStoredToken = () => {

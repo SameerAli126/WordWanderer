@@ -25,7 +25,7 @@ export function StreakFreezeModal({ isOpen, onClose, currentStreak, gems }: Stre
       const response = await apiRequest<{ gems: number; streakFreezes: number }>("/api/users/streak-freeze/purchase", {
         method: "POST",
       })
-      emitBalanceUpdate({ gems: response.gems })
+      emitBalanceUpdate({ gems: response.gems, streakFreezes: response.streakFreezes })
       setIsProcessing(false)
       onClose()
     } catch (purchaseError) {

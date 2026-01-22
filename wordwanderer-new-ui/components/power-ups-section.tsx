@@ -1,55 +1,157 @@
+"use client"
+
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Snowflake, Zap, Shield, Target } from "lucide-react"
+import { Shield, Snowflake, Target, Zap } from "lucide-react"
+import { apiRequest, BALANCE_EVENT_NAME, BalanceUpdate, emitBalanceUpdate } from "@/lib/api"
 
-const powerUpItems = [
+const STREAK_FREEZE_COST = 200
+
+type PowerUpItem = {
+  id: string
+  title: string
+  description: string
+  icon: typeof Snowflake
+  iconColor: string
+  buttonText: string
+  buttonVariant: "default" | "secondary"
+  equipped: string | null
+  price: number
+  disabled: boolean
+  onClick?: () => void
+}
+
+const staticPowerUps = [
   {
-    id: 1,
-    title: "Streak Freeze",
-    description: "Streak Freeze allows your streak to remain in place for one full day of inactivity.",
-    icon: Snowflake,
-    iconColor: "bg-cyan-500",
-    buttonText: "EQUIPPED",
-    buttonVariant: "secondary" as const,
-    equipped: "2 / 2 EQUIPPED",
-    price: null,
-  },
-  {
-    id: 2,
+    id: "double-or-nothing",
     title: "Double or Nothing",
-    description: "Double your lingots by maintaining a 7-day streak or lose them all!",
+    description: "Double your gems by maintaining a 7-day streak or lose them all!",
     icon: Zap,
     iconColor: "bg-yellow-500",
-    buttonText: "50 GEMS",
-    buttonVariant: "default" as const,
-    equipped: null,
     price: 50,
   },
   {
-    id: 3,
+    id: "streak-shield",
     title: "Streak Shield",
     description: "Protect your streak from being broken for 24 hours.",
     icon: Shield,
     iconColor: "bg-blue-500",
-    buttonText: "10 GEMS",
-    buttonVariant: "default" as const,
-    equipped: null,
     price: 10,
   },
   {
-    id: 4,
+    id: "xp-boost",
     title: "XP Boost",
     description: "Double your XP for the next lesson you complete.",
     icon: Target,
     iconColor: "bg-green-500",
-    buttonText: "25 GEMS",
-    buttonVariant: "default" as const,
-    equipped: null,
     price: 25,
   },
 ]
 
 export function PowerUpsSection() {
+  const [gems, setGems] = useState(0)
+  const [streakFreezes, setStreakFreezes] = useState(0)
+  const [isPurchasing, setIsPurchasing] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadProfile = async () => {
+      try {
+        const response = await apiRequest<{ user: { gems?: number; streakFreezes?: number } }>("/api/auth/me")
+        if (!cancelled) {
+          setGems(response.user.gems ?? 0)
+          setStreakFreezes(response.user.streakFreezes ?? 0)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load power-ups info:", error)
+        }
+      }
+    }
+
+    loadProfile()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<BalanceUpdate>).detail
+      if (!detail) {
+        return
+      }
+      if (typeof detail.gems === "number") {
+        setGems(detail.gems)
+      }
+      if (typeof detail.streakFreezes === "number") {
+        setStreakFreezes(detail.streakFreezes)
+      }
+    }
+
+    window.addEventListener(BALANCE_EVENT_NAME, handler)
+    return () => window.removeEventListener(BALANCE_EVENT_NAME, handler)
+  }, [])
+
+  const streakFreezeStatus = useMemo(() => {
+    const canAfford = gems >= STREAK_FREEZE_COST
+    return {
+      canAfford,
+      buttonText: isPurchasing ? "ADDING..." : `BUY ${STREAK_FREEZE_COST} GEMS`,
+    }
+  }, [gems, isPurchasing])
+
+  const handlePurchaseStreakFreeze = async () => {
+    if (isPurchasing || !streakFreezeStatus.canAfford) {
+      return
+    }
+
+    setIsPurchasing(true)
+    try {
+      const response = await apiRequest<{ streakFreezes: number; gems: number }>("/api/users/streak-freeze/purchase", {
+        method: "POST",
+      })
+      setStreakFreezes(response.streakFreezes)
+      setGems(response.gems)
+      emitBalanceUpdate({ gems: response.gems })
+    } catch (error) {
+      console.error("Failed to purchase streak freeze:", error)
+    } finally {
+      setIsPurchasing(false)
+    }
+  }
+
+  const powerUpItems = [
+    {
+      id: "streak-freeze",
+      title: "Streak Freeze",
+      description: "Keep your streak safe for a full day of inactivity.",
+      icon: Snowflake,
+      iconColor: "bg-cyan-500",
+      buttonText: streakFreezeStatus.buttonText,
+      buttonVariant: "default" as const,
+      equipped: streakFreezes > 0 ? `${streakFreezes} AVAILABLE` : null,
+      price: STREAK_FREEZE_COST,
+      disabled: !streakFreezeStatus.canAfford || isPurchasing,
+      onClick: handlePurchaseStreakFreeze,
+    },
+    ...staticPowerUps.map((item) => ({
+      ...item,
+      buttonText: `${item.price} GEMS`,
+      buttonVariant: "default" as const,
+      equipped: null,
+      disabled: true,
+      onClick: undefined,
+    })),
+  ] satisfies PowerUpItem[]
+
   return (
     <div>
       <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6">Power-Ups</h2>
@@ -79,14 +181,15 @@ export function PowerUpsSection() {
 
                 <Button
                   variant={item.buttonVariant}
-                  disabled={item.buttonText === "EQUIPPED"}
+                  disabled={item.disabled}
                   className={`px-4 sm:px-6 py-2 font-bold text-sm sm:text-base flex-shrink-0 ${
-                    item.buttonText === "EQUIPPED"
+                    item.disabled
                       ? "bg-slate-600 text-slate-400 cursor-not-allowed"
                       : item.buttonVariant === "default"
                         ? "bg-blue-600 hover:bg-blue-700 text-white"
                         : "bg-slate-600 hover:bg-slate-500 text-white"
                   }`}
+                  onClick={item.onClick}
                 >
                   {item.buttonText}
                 </Button>
